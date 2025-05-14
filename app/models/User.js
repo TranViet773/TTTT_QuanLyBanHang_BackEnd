@@ -109,6 +109,8 @@ const userSchema = new mongoose.Schema(
                 type: new mongoose.Schema({
                     email: {
                         type: String,
+                        lowercase: true,
+                        match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
                     },
                     from_date: {
                         type: String,
@@ -137,6 +139,7 @@ const userSchema = new mongoose.Schema(
                     phone_number: {
                         type: String,
                         required: true,
+                        match: [/^\d+$/, 'Chỉ được chứa ký tự số'],
                     },
                     full_phone_number: { type: String, },
                     from_date: { type: Date, },
@@ -156,7 +159,11 @@ const userSchema = new mongoose.Schema(
                     phone_number: { type: String, },
                     address_1: { type: String, },
                     address_2: { type: String, },
-                    email: { type: String, },
+                    email: {
+                        type: String,
+                        lowercase: true,
+                        match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
+                    },
                     ward: { type: String, },
                     district: { type: String, },
                     city: { type: String, },
@@ -172,4 +179,4 @@ const userSchema = new mongoose.Schema(
     }
 )
 
-module.export = mongoose.model('User', userSchema)
+module.exports = mongoose.model('User', userSchema)
