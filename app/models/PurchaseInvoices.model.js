@@ -1,25 +1,25 @@
 const mongoose = require('mongoose')
 
 const purchaseInvoicesSchema = new mongoose.Schema({
-    invoice_code: {
+    INVOICE_CODE: {
         type: String,
         required: true,
         unique: true,
     },
 
-    supplier: {
+    SUPPLIER: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Supplier',
     },
 
-    import_date: { type: Date },
+    IMPORT_DATE: { type: Date },
 
-    imported_by: {
+    IMPORTED_BY: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
 
-    status: [{
+    STATUS: [{
         type: new mongoose.Schema({
             status_name: {type: String},
             from_date: { type: Date, },
@@ -29,32 +29,32 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         _id: false,
     }],
 
-    total_amount: {
+    TOTAL_AMOUNT: {
         type: Number,
         required: true,
     },
 
-    tax: {
+    TAX: {
         type: Number,
         required: true
     },
 
-    total_with_tax: {
+    TOTAL_WITH_TAX: {
         type: Number,
         required: true,
     },
 
-    items: [
+    ITEMS: [
         {
             type: new mongoose.Schema({
-                item_code: {
+                ITEM_CODE: {
                     type: mongoose.Schema.Types.ObjectId,
                     ref: 'Item',
                 },
-                quantity: { type: Number },
-                unit: { type: String, },
-                unit_price: { type: Number },
-                total_price: { type: Number },
+                QUANTITY: { type: Number },
+                UNIT: { type: String, },
+                UNIT_PRICE: { type: Number },
+                TOTAL_PRICE: { type: Number },
 
             }),
 
@@ -63,4 +63,4 @@ const purchaseInvoicesSchema = new mongoose.Schema({
     ]
 })
 
-module.exports = mongoose.model('PurchaseInvoices', purchaseInvoicesSchema)
+module.exports = mongoose.model('Purchase_Invoices', purchaseInvoicesSchema)

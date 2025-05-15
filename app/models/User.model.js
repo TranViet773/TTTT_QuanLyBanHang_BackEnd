@@ -4,26 +4,26 @@ const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema(
     {
-        list_name: [
+        LIST_NAME: [
             {
                 type: new mongoose.Schema({
-                    last_name: {
+                    LAST_NAME: {
                         type: String,
                     },
-                    first_name: {
+                    FIRST_NAME: {
                         type: String,
                     },
-                    middle_name: {
+                    MIDDLE_NAME: {
                         type: String,
                     },
-                    full_name: {
+                    FULL_NAME: {
                         type: String,
                         required: true,
                     },
-                    from_date: {
+                    FROM_DATE: {
                         type: Date,
                     },
-                    thru_date: {
+                    THRU_DATE: {
                         type: Date,
                     }
                 }),
@@ -31,49 +31,51 @@ const userSchema = new mongoose.Schema(
                 _id: false,
             }
         ],
+
         
-        current_gender: {
+        
+        CURRENT_GENDER: {
             type: String,
             enum: ['Nam', 'Nữ', 'Khác'],
             required: true,
         },
 
-        birth_date: {
+        BIRTH_DATE: {
             type: Date,
         },
 
-        avatar_img_url: {
+        AVATAR_IMG_URL: {
             type: String,
         },
 
-        list_address: [
+        LIST_ADDRESS: [
             {
                 type: new mongoose.Schema({
-                    country: {
+                    COUNTRY: {
                         type: String,
                     },
-                    city: {
+                    CITY: {
                         type: String,
                     },
-                    district: {
+                    DISTRICT: {
                         type: String,
                     },
-                    ward: {
+                    WARD: {
                         type: String,
                     },
-                    address_1: {
+                    ADDRESS_1: {
                         type: String,
                     },
-                    address_2: {
+                    ADDRESS_2: {
                         type: String,
                     },
-                    state: {
+                    STATE: {
                         type: String,
                     },
-                    from_date: {
+                    FROM_DATE: {
                         type: Date,
                     },
-                    thru_date: {
+                    THRU_DATE: {
                         type: Date,
                     }
                 }),
@@ -81,21 +83,21 @@ const userSchema = new mongoose.Schema(
             }
         ],
 
-        role: {
+        ROLE: {
             type: new mongoose.Schema({
-                is_admin: {
+                IS_ADMIN: {
                     type: Boolean,
                     default: false,
                 },
-                is_manager: {
+                IS_MANAGER: {
                     type: Boolean,
                     default: false,
                 },
-                is_service_staff: {
+                IS_SERVICE_STAFF: {
                     type: Boolean,
                     default: false,
                 },
-                is_customer: {
+                IS_CUSTOMER: {
                     type: Boolean,
                     default: true,
                 },
@@ -104,18 +106,18 @@ const userSchema = new mongoose.Schema(
             _id: false,     // Không tạo id cho schema con
         },
         
-        list_email: [
+        LIST_EMAIL: [
             {
                 type: new mongoose.Schema({
-                    email: {
+                    EMAIL: {
                         type: String,
                         lowercase: true,
                         match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
                     },
-                    from_date: {
+                    FROM_DATE: {
                         type: String,
                     },
-                    thru_date: {
+                    THRU_DATE: {
                         type: String,
                     },
                 }),
@@ -124,56 +126,56 @@ const userSchema = new mongoose.Schema(
             }
         ],
 
-        list_phone_number: [
+        LIST_PHONE_NUMBER: [
             {
                 type: new mongoose.Schema({
-                    country_code: {
+                    COUNTRY_CODE: {
                         type: String,
                         required: true,
                     },
-                    country_name: { type: String },
-                    area_code: {
+                    COUNTRY_NAME: { type: String },
+                    AREA_CODE: {
                         type: String,
                         required: true,
                     },
-                    phone_number: {
+                    PHONE_NUMBER: {
                         type: String,
                         required: true,
                         match: [/^\d+$/, 'Chỉ được chứa ký tự số'],
                     },
-                    full_phone_number: { type: String, },
-                    from_date: { type: Date, },
-                    thru_date: { type: Date, },
+                    FULL_PHONE_NUMBER: { type: String, },
+                    FROM_DATE: { type: Date, },
+                    THRU_DATE: { type: Date, },
                 }),
                 _id: false,
             }
         ],
 
-        list_contact: [
+        LIST_CONTACT: [
             {
                 type: new mongoose.Schema({
-                    last_name: { type: String, },
-                    first_name: { type: String, },
-                    middle_name: { type: String, },
-                    full_name: { type: String, },
-                    phone_number: { type: String, },
-                    address_1: { type: String, },
-                    address_2: { type: String, },
-                    email: {
+                    LAST_NAME: { type: String, },
+                    FIRST_NAME: { type: String, },
+                    MIDDLE_NAME: { type: String, },
+                    FULL_NAME: { type: String, },
+                    PHONE_NUMBER: { type: String, },
+                    ADDRESS_1: { type: String, },
+                    ADDRESS_2: { type: String, },
+                    EMAIL: {
                         type: String,
                         lowercase: true,
                         match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
                     },
-                    ward: { type: String, },
-                    district: { type: String, },
-                    city: { type: String, },
-                    state: { type: String, },
-                    country: { type: String, },
-                    relationship: { type: String, },
-                    from_date: { type: String, },
-                    thru_date: { type: String, },
+                    WARD: { type: String, },
+                    DISTRICT: { type: String, },
+                    CITY: { type: String, },
+                    STATE: { type: String, },
+                    COUNTRY: { type: String, },
+                    RELATIONSHIP: { type: String, },
+                    FROM_DATE: { type: String, },
+                    THRU_DATE: { type: String, },
                 }),
-                _id: false,
+                _id: false,     
             }
         ]
     }

@@ -1,39 +1,39 @@
 const mongoose = require('mongoose')
 
 const supplierSchema = new mongoose.Schema({
-    supplier_name: {
+    SUPPLIER_NAME: {
         type: String,
         required: true,
     },
 
-    supplier_phone: {
+    SUPPLIER_PHONE: {
         type: String,
         match: [/^\d+$/, 'Chỉ chứa ký tự số']
     },
 
-    supplier_address: {
+    SUPPLIER_ADDRESS: {
         type: String,
     },
 
-    supplier_email: {
+    SUPPLIER_EMAIL: {
         type: String,
         lowercase: true,
         match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
     },
 
-    supplier_tax_code: {
+    SUPPLIER_TAX_CODE: {
         type: String,
     },
 
-    supplier_contact_person_name: {
+    SUPPLIER_CONTACT_PERSON_NAME: {
         type: String,
     },
 
-    note: {
+    NOTE: {
         type: String,
     },
 
-    is_active: {
+    IS_ACTIVE: {
         type: Boolean,
         required: true,
     }
