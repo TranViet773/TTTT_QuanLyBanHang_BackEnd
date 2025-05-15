@@ -4,32 +4,32 @@ const mongoose = require('mongoose')
 
 const itemSchema = new mongoose.Schema(
     {
-        item_code: {
+        ITEM_CODE: {
             type: String,
             required: true,
             unique: true,
         },
 
-        item_name: {
+        ITEM_NAME: {
             type: String,
             required: true,
         },
    
-        item_name_en: {
+        ITEM_NAME_EN: {
             type: String,
         },
         
-        item_type: {
+        ITEM_TYPE: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'ItemType',
         },
 
-        unit:{
+        UNIT:{
             type: String,
             required: true,
         },
         
-        price:[{
+        PRICE:[{
             type: new mongoose.Schema({
                 priceAmount: {type: Number,},
                 fromDate:{type: Date},
@@ -37,21 +37,21 @@ const itemSchema = new mongoose.Schema(
             }),
         }],
 
-        description: {
+        DESCRIPTION: {
             type: String,
         },
 
-        is_active: {
+        IS_ACTIVE: {
             type: Boolean,
             required: true,
         },
 
-        import_by: {
+        IMPORTED_BY: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
         },
 
-        item_stocks: {
+        ITEM_STOCKS: {
             type: new mongoose.Schema({
                 quantity: { type: Number, },
                 last_update: { type: Date },
@@ -59,7 +59,7 @@ const itemSchema = new mongoose.Schema(
             _id: false,
         },
 
-        bom_materials: [
+        BOM_MATERIALS: [
             {
                 type: new mongoose.Schema({
                     item_code: { type: String },

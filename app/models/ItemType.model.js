@@ -1,14 +1,14 @@
 const mongoose = require('mongoose')
 
 const itemTypeSchema = new mongoose.Schema({
-    item_type_name: {
+    ITEM_TYPE_NAME: {
         type: String,
         required: true,
     },
 
-    item_type_name_en: {
+    ITEM_TYPE_NAME_EN: {
         type: String,
     }
 })
 
-module.exports = mongoose.model('ItemType', itemTypeSchema)
+module.exports = mongoose.model('Item_Type', itemTypeSchema)

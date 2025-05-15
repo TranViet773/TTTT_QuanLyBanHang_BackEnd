@@ -1,10 +1,17 @@
 // Call in installed dependencies
 const express = require('express');
-// set up express app
+require('dotenv').config()
+const authRoute = require('./app/routes/auth.route');
+
 const app = express();
-// set up port number
-const port = 5035;
-// set up home route
+const port = process.env.PORT || 5000;
+
+
+
+app.use(express.json());
+app.use('/api/auth', authRoute);
+
+
 app.get('/', (request, respond) => {
   respond.status(200).json({
     message: 'Welcome to Project Support',
@@ -15,7 +22,7 @@ app.listen(port, (request, respond) => {
 });
 
 
-require('dotenv').config()
 
-const connectDB = require('./config/db')
+
+const connectDB = require('./app/configs/db.config')
 connectDB()
