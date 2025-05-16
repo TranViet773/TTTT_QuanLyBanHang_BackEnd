@@ -9,7 +9,7 @@ const accountSchema = new mongoose.Schema({
     PASSWORD: {
         type: String,
         required: true,
-        select: false,      // Không trả về mặc định khi truy vấn
+        // select: false,      // Không trả về mặc định khi truy vấn
         match: [/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/,
             'Mật khẩu bao gồm có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt'
         ]

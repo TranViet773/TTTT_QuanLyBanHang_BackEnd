@@ -115,10 +115,10 @@ const userSchema = new mongoose.Schema(
                         match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
                     },
                     FROM_DATE: {
-                        type: String,
+                        type: Date,
                     },
                     THRU_DATE: {
-                        type: String,
+                        type: Date,
                     },
                 }),
                 required: true,
