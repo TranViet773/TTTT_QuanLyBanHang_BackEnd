@@ -1,7 +1,6 @@
 const userService = require('../services/user.service');
 const jwt = require('jsonwebtoken');
 
-
 const register = async (req, res) => {
     try{
         const response = await userService.handleRegistration(req.body);
@@ -50,7 +49,38 @@ const verifyAndCreateUser = async (req, res) => {
 };
 
 
+const login = async (req, res) => {
+    try {
+        const response = await userService.login(req.body)
+        console.log("Response: ", response)
+
+        if(response.error) {
+            res.status(401).json({
+                success: false,
+                message: response.error,
+                data: null
+            })
+        }
+
+        else {
+            res.status(201).json({
+                success: true,
+                message: 'Login successfully',
+                data: response
+            })
+        }
+        
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: err.message,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     register,
-    verifyAndCreateUser
+    verifyAndCreateUser,
+    login
 }

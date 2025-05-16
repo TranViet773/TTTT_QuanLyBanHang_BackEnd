@@ -8,24 +8,27 @@ const accountDeviceSchema = new mongoose.Schema({
     },
     LIST_DEVICE_OF_ACCOUNT: [
         {
-            ID_DEVICE: {
-                type: String,
-            },
-            NAME_DEVICE: {
-                type: String,
-            },
-            TYPE_DEVICE: {
-                type: String,
-            },
-            LAST_TIME_LOGIN: {
-                type: Date,
-            },
-            PRIVATE_KEY: {
-                type: String,
-            },
-            PUBLIC_KEY: {
-                type: String,
-            },
+            type: new mongoose.Schema({
+                ID_DEVICE: {
+                    type: String,
+                },
+                NAME_DEVICE: {
+                    type: String,
+                },
+                TYPE_DEVICE: {
+                    type: String,
+                },
+                LAST_TIME_LOGIN: {
+                    type: Date,
+                },
+                PRIVATE_KEY: {
+                    type: String,
+                },
+                PUBLIC_KEY: {
+                    type: String,
+                },
+            }),
+            _id: false,
         }
     ]
 })
