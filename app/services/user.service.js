@@ -4,6 +4,7 @@ const AccountDevice = require('../models/AccountDevice.model');
 const authService = require('../services/auth.service');
 const { generateKeyPairSync } = require('crypto');
 const crypto = require('crypto');
+const { error } = require('console');
 
 const generateKeyPair = () => {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -20,12 +21,15 @@ const generateKeyPair = () => {
   return { privateKey, publicKey };
 };
 
-const register = async (data) => {
-  const {privateKey, publicKey} = generateKeyPair();
-  const {username, password, lastName, firstName, gender, avatar, email} = data;
-  const existingUser = await User.findOne({EMAIL: email}) || await Account.findOne({USERNAME: username});
-  if (existingUser) throw new Error('Tài khoản đã tồn tại');
-  //Tạo một đối tượng user
+const handleRegistration = async (data) => {
+  const existingUser = await User.findOne({EMAIL: data.email}) || await Account.findOne({USERNAME: data.username});
+  if (existingUser) return { error: 'Email đã được đăng ký!' };
+  await authService.sendVerificationEmail(data);
+}
+
+const handleCreateUser = async (data) => {
+  const {username, password, lastName, firstName, gender, avatar, email, dob} = data;
+  
   const userData = {
     LIST_NAME: [
         {
@@ -38,7 +42,7 @@ const register = async (data) => {
         }
     ],
     CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
-    BIRTH_DATE: new Date('2000-01-01'),
+    BIRTH_DATE: dob === null ? null : new Date(dob),
     AVATAR_IMG_URL: avatar || '',
     ROLE: {
         IS_ADMIN: false,
@@ -50,15 +54,17 @@ const register = async (data) => {
         {
             EMAIL: email,
             FROM_DATE: new Date(),
-            THRU_DATE: '2030-01-01',
+            THRU_DATE: null,
         }
     ]
   };
 
   let user = new User();
   try{
+    //Tạo một đối tượng user
     user = await User.create(userData);
     console.log(user);
+
     //Tạo đối tượng Account
     const accountData = {
         USERNAME: username,
@@ -67,41 +73,23 @@ const register = async (data) => {
         THRU_DATE: null,
         USER_ID: user._id,
     };
-
     const account = await Account.create(accountData);
-    const accountDeviceData = {
-        USER_ID: user._id,  
-        LIST_DEVICE_OF_ACCOUNT: [
-            {
-                PRIVATE_KEY: privateKey,
-                PUBLIC_KEY: publicKey,
-            }
-        ]
-    };
 
-    const accountDevice = await AccountDevice.create(accountDeviceData);
-    const verifyData = {
-        USER_ID: user._id,
-        USERNAME: accountData.USERNAME,
-        FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-        LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-        EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
-        DEVICE_ID: user._id,
-        DEVICE_NAME: 'Device 1',
-        IS_ADMIN: user.ROLE.IS_ADMIN,
-        IS_MANAGER: user.ROLE.IS_MANAGER,
-        IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
-        IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-        IS_ACTIVE: account.IS_ACTIVE,
-        AVATAR: user.AVATAR_IMG_URL
-    }
-    const accessToken = authService.generateAccessToken(verifyData, privateKey);
-    const refreshToken = authService.generateRefreshToken(verifyData, privateKey);
-     return {
-        message: 'Đăng ký thành công',
-        accessToken,
-        refreshToken,
-    };
+    // const verifyData = {
+    //     USER_ID: user._id,
+    //     USERNAME: accountData.USERNAME,
+    //     FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+    //     LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+    //     EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+    //     IS_ADMIN: user.ROLE.IS_ADMIN,
+    //     IS_MANAGER: user.ROLE.IS_MANAGER,
+    //     IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+    //     IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+    //     IS_ACTIVE: account.IS_ACTIVE,
+    //     AVATAR: user.AVATAR_IMG_URL
+    // }
+    //const accessToken = authService.generateAccessToken(verifyData, privateKey);
+    //const refreshToken = authService.generateRefreshToken(verifyData, privateKey);
   }catch (error) {
     //Rollback khi có lỗi
     const userExisted = await User.findOne({_id: user._id});
@@ -120,12 +108,12 @@ const register = async (data) => {
     }
 
     console.error('Error creating user:', error);
-    throw new Error('Đăng ký không thành công');
-    
+    return { error: 'Lỗi khi tạo tài khoản' };
   }
 
 };
 
 module.exports = {
-    register
+    handleCreateUser,
+    handleRegistration
 }
