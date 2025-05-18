@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
+const { authenticateToken, refreshTokenMiddleware, checkRoleMiddleware } = require('../middlewares/auth.middleware');
 
 // Post /api/auth/register
 router.post('/register', authController.register);
 router.get('/verify-email', authController.verifyAndCreateUser);
 router.post('/login', authController.login)
-
-module.exports = router;    
+router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser);
+router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken);
+router.post('/logout', authenticateToken, authController.logout);
+module.exports = router;

@@ -4,9 +4,7 @@ const AccountDevice = require('../models/AccountDevice.model');
 const authService = require('../services/auth.service');
 const authHelper = require('../helpers/auth.helper')
 const { generateKeyPairSync } = require('crypto');
-const crypto = require('crypto');
-const { devNull } = require('os');
-const { error } = require('console');
+const ms = require('ms');
 
 const generateKeyPair = () => {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -165,7 +163,7 @@ const login = async (data) => {
     // Nếu user đăng nhập bằng email
     if (user) {
 
-        if (! authHelper.isValidEmail(user, email)) {
+        if (!authHelper.isValidEmail(user, email)) {
             return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
         }
         
@@ -203,7 +201,8 @@ const login = async (data) => {
             IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
             IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
             IS_ACTIVE: account.IS_ACTIVE,
-            AVATAR: user.AVATAR_IMG_URL
+            AVATAR: user.AVATAR_IMG_URL,
+            DEVICE_ID: device.ID_DEVICE || null,
         }
 
         console.log("Test verify device data: ", device)
@@ -267,11 +266,48 @@ const login = async (data) => {
         }
     }
 
+};
+
+const handleRefreshToken = async (userData) => {
+  try {
+    console.log("userData: ", userData)
+    const {privateKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+    console.log("error: ", error)
+    if(error) {
+        return {error: "Thiết bị không hợp lệ 3"}
+    }
+    const newAccessToken = authService.generateAccessToken(userData, privateKey);
+    const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+    return {newAccessToken, accessTokenExp: expToken};
+  }catch (error) {
+    console.error('Lỗi khi làm mới token:', error);
+    return {error: "Lỗi khi làm mới token."}
+  }
+};
+
+const handleLogout = async (userData, refreshToken, accessToken) => {
+    try {
+        const {publicKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        if(error) {
+            return {error: "Thiết bị không hợp lệ 2"}
+        }
+         if (refreshToken) {
+            await addToBlacklist(refreshToken, publicKey);
+        }
+
+        if (accessToken) {
+            await addToBlacklist(accessToken, publicKey);
+        }
+    } catch (error) {
+        console.error('Lỗi khi đăng xuất:', error);
+    }
 }
 
 
 module.exports = {
     handleCreateUser,
     handleRegistration,
-    login
+    login,
+    handleRefreshToken,
+    handleLogout
 }

@@ -24,7 +24,7 @@ const register = async (req, res) => {
                 data: null,
             });
     }
-}
+};
 
 const verifyAndCreateUser = async (req, res) => {
   try {
@@ -63,6 +63,19 @@ const login = async (req, res) => {
         }
 
         else {
+            res.cookie('accessToken', response.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
+                sameSite: 'Strict', // hoặc 'Lax' nếu muốn linh hoạt hơn
+                maxAge: 15 * 60 * 1000 // 15 phút
+            });
+
+            res.cookie('refreshToken', response.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
+            });
             res.status(201).json({
                 success: true,
                 message: 'Login successfully',
@@ -71,16 +84,92 @@ const login = async (req, res) => {
         }
         
     } catch (err) {
+        
         res.status(500).json({
             success: false,
             message: err.message,
             data: null
         })
     }
+};
+
+const getCurrentUser = async (req, res) => {
+     try {
+        const userData = req.user;
+        res.status(200).json({
+            success: true,
+            message: 'Lấy thông tin người dùng thành công',
+            data: userData
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thông tin người dùng',
+            data: null
+        });
+    }
+};
+
+const refreshToken = async (req, res) => {
+    try{
+        const response = await userService.handleRefreshToken(req.user);
+        // console.log("Response: ", response.newAccessToken)
+        if(!response.error) {
+            res.cookie('accessToken', response.newAccessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Strict',
+                maxAge: 15 * 60 * 1000 // thời gian sống của key trong cookie
+            });
+            return res.status(200).json({
+                message: 'Refresh token thành công',
+                success: true,
+                data: response,
+            }); 
+        }else{
+            return res.status(401).json({
+                message: response.error,
+                success: false,
+                data: null,
+            });
+        }
+        
+    }catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null,
+        });
+    }
+};
+
+const logout = async (req, res) => {
+    try {
+        // Xử lý lưu lào blacklist trước khi clear
+        const response = await userService.handleLogout(req.user, req.cookies.accessToken, req.cookies.refreshToken);
+        //Clear khỏi cookie
+        res.clearCookie('accessToken');
+        res.clearCookie('refreshToken');
+        return res.status(200).json({
+            message: 'Đăng xuất thành công',
+            success: true,
+            data: null
+        });
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null
+        });
+    }
 }
+
 
 module.exports = {
     register,
     verifyAndCreateUser,
-    login
+    login,
+    getCurrentUser,
+    refreshToken,
+    logout
 }
