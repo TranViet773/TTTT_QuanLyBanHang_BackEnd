@@ -1,16 +1,25 @@
 // Call in installed dependencies
 const express = require('express');
 require('dotenv').config()
-const authRoute = require('./app/routes/auth.route');
+
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+
+
 
 const app = express();
 const port = process.env.PORT || 5000;
+const authRoute = require('./app/routes/auth.route');
 
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 
 app.use(express.json());
+app.use(cookieParser());
 app.use('/api/auth', authRoute);
-
 
 app.get('/', (request, respond) => {
   respond.status(200).json({
@@ -20,9 +29,6 @@ app.get('/', (request, respond) => {
 app.listen(port, (request, respond) => {
   console.log(`Our server is live on ${port}. Yay!`);
 });
-
-
-
 
 const connectDB = require('./app/configs/db.config')
 connectDB()
