@@ -1,4 +1,5 @@
 const userService = require('../services/user.service');
+const authService = require('../services/auth.service');
 const jwt = require('jsonwebtoken');
 
 const register = async (req, res) => {
@@ -162,7 +163,44 @@ const logout = async (req, res) => {
             data: null
         });
     }
-}
+};
+
+const changePassword = async (req, res)=>{
+
+    try {
+        const userId = req.user.USER_ID;
+        const {oldPassword, newPassword, confirmNewPassword} = req.body;
+        if(newPassword !== confirmNewPassword) {
+            return res.status(401).json({
+                message: "Mật khẩu mới không khớp",
+                success: false,
+                data: null
+            });
+        }
+        const result = await authService.changePassword(userId, oldPassword, newPassword);
+        if (result.error) {
+            return res.status(401).json({
+                message: result.error,
+                success: false,
+                data: null
+            });
+        }
+        return res.status(200).json({
+            message: "Đổi mật khẩu thành công hehehe",
+            success: true,
+            data: null
+        });
+    }catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null
+        });
+    }
+
+
+
+};
 
 
 module.exports = {
@@ -171,5 +209,6 @@ module.exports = {
     login,
     getCurrentUser,
     refreshToken,
-    logout
+    logout,
+    changePassword
 }

@@ -6,116 +6,117 @@ const authHelper = require('../helpers/auth.helper')
 const { generateKeyPairSync } = require('crypto');
 const ms = require('ms');
 
+// tạo cặp khóa RSA cho từng thiết bị đăng nhập
 const generateKeyPair = () => {
-  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    publicKeyEncoding: {
-      type: 'pkcs1',
-      format: 'pem'
-    },
-    privateKeyEncoding: {
-      type: 'pkcs1',
-      format: 'pem'
-    }
-  });
-  return { privateKey, publicKey };
+    const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: {
+            type: 'pkcs1',
+            format: 'pem'
+        },
+        privateKeyEncoding: {
+            type: 'pkcs1',
+            format: 'pem'
+        }
+    });
+    return { privateKey, publicKey };
 };
-
+// hàm kiểm tra email hoặc username đã tồn tại hay chưa
 const handleRegistration = async (data) => {
-  const existingUser = await User.findOne({EMAIL: data.email}) || await Account.findOne({USERNAME: data.username});
-  if (existingUser) return { error: 'Email đã được đăng ký!' };
-  await authService.sendVerificationEmail(data);
+    const existingUser = await User.findOne({ EMAIL: data.email }) || await Account.findOne({ USERNAME: data.username });
+    if (existingUser) return { error: 'Email đã được đăng ký!' };
+    await authService.sendVerificationEmail(data);
 }
 
 const handleCreateUser = async (data) => {
-  const {username, password, lastName, firstName, gender, avatar, email, dob} = data;
-  
-  const userData = {
-    LIST_NAME: [
-        {
-            LAST_NAME: lastName,
-            FIRST_NAME: firstName,
-            MIDDLE_NAME: '',
-            FULL_NAME: `${lastName} ${firstName}`,
-            FROM_DATE: new Date(),
-            THRU_DATE: null,
-        }
-    ],
-    CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
-    BIRTH_DATE: dob === null ? null : new Date(dob),
-    AVATAR_IMG_URL: avatar || '',
-    ROLE: {
-        IS_ADMIN: false,
-        IS_MANAGER: true,
-        IS_SERVICE_STAFF: false,
-        IS_CUSTOMER: true,
-    },
-    LIST_EMAIL: [
-        {
-            EMAIL: email,
-            FROM_DATE: new Date(),
-            THRU_DATE: null,
-        }
-    ]
-  };
+    const { username, password, lastName, firstName, gender, avatar, email, dob } = data;
 
-  let user = new User();
-  try{
-    //Tạo một đối tượng user
-    user = await User.create(userData);
-    console.log(user);
-
-    //Tạo đối tượng Account
-    const accountData = {
-        USERNAME: username,
-        PASSWORD: await authService.hashPassword(password),
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-        USER_ID: user._id,
-    };
-    const account = await Account.create(accountData);
-
-    const accountDeviceData = {
-        USER_ID: user._id
+    const userData = {
+        LIST_NAME: [
+            {
+                LAST_NAME: lastName,
+                FIRST_NAME: firstName,
+                MIDDLE_NAME: '',
+                FULL_NAME: `${lastName} ${firstName}`,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ],
+        CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
+        BIRTH_DATE: dob === null ? null : new Date(dob),
+        AVATAR_IMG_URL: avatar || '',
+        ROLE: {
+            IS_ADMIN: false,
+            IS_MANAGER: true,
+            IS_SERVICE_STAFF: false,
+            IS_CUSTOMER: true,
+        },
+        LIST_EMAIL: [
+            {
+                EMAIL: email,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ]
     };
 
-    const accountDevice = await AccountDevice.create(accountDeviceData);
+    let user = new User();
+    try {
+        //Tạo một đối tượng user
+        user = await User.create(userData);
+        console.log(user);
 
-    // const verifyData = {
-    //     USER_ID: user._id,
-    //     USERNAME: accountData.USERNAME,
-    //     FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-    //     LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-    //     EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
-    //     IS_ADMIN: user.ROLE.IS_ADMIN,
-    //     IS_MANAGER: user.ROLE.IS_MANAGER,
-    //     IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
-    //     IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-    //     IS_ACTIVE: account.IS_ACTIVE,
-    //     AVATAR: user.AVATAR_IMG_URL
-    // }
-    //const accessToken = authService.generateAccessToken(verifyData, privateKey);
-    //const refreshToken = authService.generateRefreshToken(verifyData, privateKey);
-  }catch (error) {
-    //Rollback khi có lỗi
-    const userExisted = await User.findOne({_id: user._id});
-    if(userExisted) {
-      await User.deleteOne({_id: user._id});
+        //Tạo đối tượng Account
+        const accountData = {
+            USERNAME: username,
+            PASSWORD: await authService.hashPassword(password),
+            FROM_DATE: new Date(),
+            THRU_DATE: null,
+            USER_ID: user._id,
+        };
+        const account = await Account.create(accountData);
+
+        const accountDeviceData = {
+            USER_ID: user._id
+        };
+
+        const accountDevice = await AccountDevice.create(accountDeviceData);
+
+        // const verifyData = {
+        //     USER_ID: user._id,
+        //     USERNAME: accountData.USERNAME,
+        //     FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+        //     LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+        //     EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+        //     IS_ADMIN: user.ROLE.IS_ADMIN,
+        //     IS_MANAGER: user.ROLE.IS_MANAGER,
+        //     IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+        //     IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+        //     IS_ACTIVE: account.IS_ACTIVE,
+        //     AVATAR: user.AVATAR_IMG_URL
+        // }
+        //const accessToken = authService.generateAccessToken(verifyData, privateKey);
+        //const refreshToken = authService.generateRefreshToken(verifyData, privateKey);
+    } catch (error) {
+        //Rollback khi có lỗi
+        const userExisted = await User.findOne({ _id: user._id });
+        if (userExisted) {
+            await User.deleteOne({ _id: user._id });
+        }
+
+        const accountExisted = await Account.findOne({ USER_ID: user._id });
+        if (accountExisted) {
+            await Account.deleteOne({ USER_ID: user._id });
+        }
+
+        const accountDeviceExisted = await AccountDevice.findOne({ USER_ID: user._id });
+        if (accountDeviceExisted) {
+            await AccountDevice.deleteOne({ USER_ID: user._id });
+        }
+
+        console.error('Error creating user:', error);
+        return { error: 'Lỗi khi tạo tài khoản' };
     }
-
-    const accountExisted = await Account.findOne({USER_ID: user._id});
-    if(accountExisted) {
-      await Account.deleteOne({USER_ID: user._id});
-    }
-
-    const accountDeviceExisted = await AccountDevice.findOne({USER_ID: user._id});
-    if(accountDeviceExisted) {
-      await AccountDevice.deleteOne({USER_ID: user._id});
-    }
-
-    console.error('Error creating user:', error);
-    return { error: 'Lỗi khi tạo tài khoản' };
-  }
 
 };
 
@@ -132,7 +133,7 @@ const loginDevice = async (accountDevice, deviceId) => {
     }
 
     // Nếu là thiết bị mới
-    const {privateKey, publicKey} = generateKeyPair()
+    const { privateKey, publicKey } = generateKeyPair()
     accountDevice.LIST_DEVICE_OF_ACCOUNT.push({
         ID_DEVICE: deviceId || null,
         PRIVATE_KEY: privateKey,
@@ -153,20 +154,20 @@ const loginDevice = async (accountDevice, deviceId) => {
 }
 
 const login = async (data) => {
-    const {username, email, password, deviceId} = data 
-    const user = await User.findOne({ "LIST_EMAIL.EMAIL" : email})
+    const { username, email, password, deviceId } = data
+    const user = await User.findOne({ "LIST_EMAIL.EMAIL": email })
 
     if ((!username || !email) && !password) {
-        return {error: "Vui lòng nhập đầy đủ thông tin đăng nhập."}
+        return { error: "Vui lòng nhập đầy đủ thông tin đăng nhập." }
     }
-    
+
     // Nếu user đăng nhập bằng email
     if (user) {
 
         if (!authHelper.isValidEmail(user, email)) {
-            return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+            return { error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký." }
         }
-        
+
         // Lấy account theo user id
         const account = await Account.findOne({ USER_ID: user._id })
         if (!account) {
@@ -175,7 +176,7 @@ const login = async (data) => {
 
         // So sánh password
         if (! await authService.isMatchedPassword(password, account.PASSWORD)) {
-            return {error: "Sai mật khẩu."}
+            return { error: "Sai mật khẩu." }
         }
 
         const accountDevice = await AccountDevice.findOne({ USER_ID: user._id })
@@ -191,9 +192,9 @@ const login = async (data) => {
         const verifyData = {
             USER_ID: user._id,
             USERNAME: account.USERNAME,
-            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length - 1].FIRST_NAME,
+            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length - 1].LAST_NAME,
+            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length - 1].EMAIL,
             DEVICE_ID: device.ID_DEVICE || null,
             DEVICE_NAME: device.NAME_DEVICE || '',
             IS_ADMIN: user.ROLE.IS_ADMIN,
@@ -218,14 +219,14 @@ const login = async (data) => {
 
     // Đăng nhập bằng username
     else {
-        const account = await Account.findOne({USERNAME: username})
+        const account = await Account.findOne({ USERNAME: username })
         if (!account) {
-            return {error: "Tài khoản không tồn tại."}
-        }      
+            return { error: "Tài khoản không tồn tại." }
+        }
 
         else {
             if (! await authService.isMatchedPassword(password, account.PASSWORD)) {
-                return {error: "Sai mật khẩu."}
+                return { error: "Sai mật khẩu." }
             }
 
             const user = await User.findOne({ _id: account.USER_ID })
@@ -243,9 +244,9 @@ const login = async (data) => {
             const verifyData = {
                 USER_ID: user._id,
                 USERNAME: account.USERNAME,
-                FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-                LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-                EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+                FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length - 1].FIRST_NAME,
+                LAST_NAME: user.LIST_NAME[user.LIST_NAME.length - 1].LAST_NAME,
+                EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length - 1].EMAIL,
                 DEVICE_ID: device.ID_DEVICE,
                 DEVICE_NAME: device.NAME_DEVICE || '',
                 IS_ADMIN: user.ROLE.IS_ADMIN,
@@ -269,29 +270,29 @@ const login = async (data) => {
 };
 
 const handleRefreshToken = async (userData) => {
-  try {
-    console.log("userData: ", userData)
-    const {privateKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
-    console.log("error: ", error)
-    if(error) {
-        return {error: "Thiết bị không hợp lệ 3"}
+    try {
+        console.log("userData: ", userData)
+        const { privateKey, error } = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        console.log("error: ", error)
+        if (error) {
+            return { error: "Thiết bị không hợp lệ 3" }
+        }
+        const newAccessToken = authService.generateAccessToken(userData, privateKey);
+        const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+        return { newAccessToken, accessTokenExp: expToken };
+    } catch (error) {
+        console.error('Lỗi khi làm mới token:', error);
+        return { error: "Lỗi khi làm mới token." }
     }
-    const newAccessToken = authService.generateAccessToken(userData, privateKey);
-    const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
-    return {newAccessToken, accessTokenExp: expToken};
-  }catch (error) {
-    console.error('Lỗi khi làm mới token:', error);
-    return {error: "Lỗi khi làm mới token."}
-  }
 };
 
 const handleLogout = async (userData, refreshToken, accessToken) => {
     try {
-        const {publicKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
-        if(error) {
-            return {error: "Thiết bị không hợp lệ 2"}
+        const { publicKey, error } = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        if (error) {
+            return { error: "Thiết bị không hợp lệ 2" }
         }
-         if (refreshToken) {
+        if (refreshToken) {
             await addToBlacklist(refreshToken, publicKey);
         }
 
@@ -302,7 +303,16 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
         console.error('Lỗi khi đăng xuất:', error);
     }
 }
+ 
+const updateUser = async (userId, data) => {
+     const user = await User.findById(userId);
+        if (!user) {
+            return { error: 'Người dùng không tồn tại' };
+        }
+        // Cập nhật thông tin người dùng
 
+     
+};
 
 module.exports = {
     handleCreateUser,

@@ -9,7 +9,8 @@ const authenticateToken = async (req, res, next) => {
     const accessToken = req.cookies.accessToken;
     const refreshToken = req.cookies.refreshToken;
     const deviceId = req.body.deviceId;
-    const userId = req.body.userId;
+      const userId = req.body.userId;
+     //const userId = req.user?.USER_ID || req.body.userId;
 
     if (!accessToken)
         return res.status(401).json({
