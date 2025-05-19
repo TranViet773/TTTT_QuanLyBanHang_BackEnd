@@ -4,7 +4,16 @@ const jwt = require('jsonwebtoken');
 
 const register = async (req, res) => {
     try{
-        const response = await userService.handleRegistration(req.body);
+        
+        const data = req.body
+
+        data.isAdmin = false
+        data.isManager = false,
+        data.isServiceStaff = false
+        data.createByUserID = null
+
+        const response = await userService.handleRegistration(data);
+
         if(response?.error) {
             return res.status(409).json({
                 message: response.error,
@@ -13,7 +22,7 @@ const register = async (req, res) => {
             });
         }else{
           return res.status(200).json({
-                message: "Đã gưi mail xác thực tài khoản đến email của bạn",
+                message: "Đã gửi mail xác thực tài khoản đến email của bạn",
                 success: true,
                 data: null,
             });
@@ -33,12 +42,7 @@ const verifyAndCreateUser = async (req, res) => {
     const data = jwt.verify(token, process.env.EMAIL_SECRET_KEY);
     console.log(data);
     await userService.handleCreateUser(data);
-    return res.status(200).json(
-      { 
-        success: true, 
-        message: 'Xác thực email thành công!',
-        data: null
-      });
+    return res.redirect('http://localhost:5173/login/')
   } catch (error) {
     return res.status(400).json(
       { 
@@ -49,6 +53,32 @@ const verifyAndCreateUser = async (req, res) => {
   }
 };
 
+const createStaffUser = async (req, res) => {
+    try {
+        const data = req.body
+        data.createByUserId = req.user.USER_ID
+
+        const user = await userService.handleCreateUser(data)
+
+        console.log("Tạo tài khoản thành công: ", user)
+
+        await authService.mailToStaffUser(user)
+
+        console.log("Email")
+
+        return res.status(201).json({
+            success: true,
+            message: 'Tạo tài khoản thành công.',
+            data: null
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Lỗi khi tạo tài khoản.",
+            data: null
+        })
+    }
+}
 
 const login = async (req, res) => {
     try {
@@ -80,7 +110,7 @@ const login = async (req, res) => {
             res.status(201).json({
                 success: true,
                 message: 'Login successfully',
-                data: response
+                data: response.user_data
             })
         }
         
@@ -163,7 +193,7 @@ const logout = async (req, res) => {
             data: null
         });
     }
-};
+}
 
 const changePassword = async (req, res)=>{
 
@@ -203,12 +233,40 @@ const changePassword = async (req, res)=>{
 };
 
 
+
+const forgetPassword = async (req, res) => {
+    try {
+        const response = await userService.handleForgotPassword(req.body)
+            if(response?.error) {
+                return res.status(409).json({
+                    message: response.error,
+                    success: false,
+                    data: null,
+                });
+            }else{
+            return res.status(200).json({
+                    message: "Đã gửi mail xác thực tài khoản đến email của bạn",
+                    success: true,
+                    data: null,
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                    message: error.message,
+                    success: false,
+                    data: null,
+                });
+        }
+}
+
 module.exports = {
     register,
     verifyAndCreateUser,
     login,
+    forgetPassword,
     getCurrentUser,
-    refreshToken,
     logout,
+    refreshToken,
+    createStaffUser,
     changePassword
 }

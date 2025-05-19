@@ -3,7 +3,9 @@ const UserModel = require('../models/User.model');
 const isValidEmail = (user, email) => {
 
     const now = new Date();
-    return user.LIST_EMAIL.some(e =>
+
+    // tạo bản sao và đảo ngược mảng trước khi duyệt
+    return user.LIST_EMAIL.slice().reverse().some(e =>
         e.EMAIL === email &&
         e.FROM_DATE <= now &&
         (e.THRU_DATE === null || e.THRU_DATE > now)
@@ -12,12 +14,14 @@ const isValidEmail = (user, email) => {
 
 const isValidInfo = (listInfo) => {
     const now = new Date()
-    return listInfo.some(info =>
+
+    console.log(listInfo)
+    // tạo bản sao và đảo ngược mảng trước khi duyệt
+    return listInfo.slice().reverse().find(info =>
         info.FROM_DATE <= now &&
         (info.THRU_DATE === null || info.THRU_DATE > now)
     )
 }
-
 
 const getSecretKey = async (userId, deviceId) => {
     const accountDevice = await AccountDeviceModel.findOne({ USER_ID: userId});
@@ -36,6 +40,6 @@ const getSecretKey = async (userId, deviceId) => {
 
 module.exports = {
     isValidEmail,
-    getSecretKey,
-    isValidInfo
+    isValidInfo,
+    getSecretKey
 }

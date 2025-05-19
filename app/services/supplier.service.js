@@ -47,7 +47,7 @@ const createSupplier = async (data) => {
     return await newSupplier.save();
 };
 // READ BY ID
-const getSupplierById = async (id) => {
+const getSupplierById = async (id) => { 
     return await Supplier.findById(id);
 };
 
