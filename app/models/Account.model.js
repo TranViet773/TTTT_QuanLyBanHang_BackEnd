@@ -68,6 +68,8 @@ const accountSchema = new mongoose.Schema({
     },
     IS_SUSPENDED: {
         type: Boolean,
+        default: false,
+        required: true,
     }
 })
 
