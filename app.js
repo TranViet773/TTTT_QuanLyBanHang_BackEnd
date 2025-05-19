@@ -10,6 +10,8 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
 const authRoute = require('./app/routes/auth.route');
+const userRoute = require('./app/routes/user.route');
+const supplierRoute = require('./app/routes/supplier.route');
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -20,6 +22,8 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use('/api/auth', authRoute);
+app.use('/api/user', userRoute);
+app.use('/api/supplier', supplierRoute);
 
 app.get('/', (request, respond) => {
   respond.status(200).json({

@@ -6,43 +6,46 @@ const { isBlacklisted } = require('../utils/tokenBlacklist');
 
 
 const authenticateToken = async (req, res, next) => {
-    const accessToken = req.cookies.accessToken;
-    const refreshToken = req.cookies.refreshToken;
-    const deviceId = req.body.deviceId;
-    const userId = req.body.userId;
+  const accessToken = req.cookies.accessToken;
+  const refreshToken = req.cookies.refreshToken;
+  const deviceId = req.body.deviceId;
+  const userId = req.body.userId;
+  //const userId = req.user?.USER_ID || req.body.userId;
 
-    if (!accessToken)
-        return res.status(401).json({
-            message: "Chưa đăng nhập",
-            success: false,
-            data: null
+
+
+  if (!accessToken)
+    return res.status(401).json({
+      message: "Chưa đăng nhập",
+      success: false,
+      data: null
     });
-    
-    try {
-        const isBlack = await isBlacklisted(accessToken);
-        if (isBlack) {
-            return res.status(403).json({
-                message: "Token đã bị thu hồi",
-                success: false,
-                data: null
-            });
-        } 
-        console.log("flag 1");
-        const {privateKey, publicKey, error} = await authHelper.getSecretKey(userId, deviceId);
-        if(error) {
-            return res.status(401).json({
-                message: "Thiết bị không hợp lệ 1",
-                success: false,
-                data: null
-            });
-        }
-        console.log("accessToken: ", accessToken);
-        const decoded = jwt.verify(accessToken, publicKey); // Hoặc dùng key từ DB/device
-        req.user = decoded; 
-        next();
-    } catch (err) {
-        return res.status(403).json({ error: "Token không hợp lệ" });
+
+  try {
+    const isBlack = await isBlacklisted(accessToken);
+    if (isBlack) {
+      return res.status(403).json({
+        message: "Token đã bị thu hồi",
+        success: false,
+        data: null
+      });
     }
+    console.log("flag 1");
+    const { privateKey, publicKey, error } = await authHelper.getSecretKey(userId, deviceId);
+    if (error) {
+      return res.status(401).json({
+        message: "Thiết bị không hợp lệ 1",
+        success: false,
+        data: null
+      });
+    }
+    console.log("accessToken: ", accessToken);
+    const decoded = jwt.verify(accessToken, publicKey); // Hoặc dùng key từ DB/device
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: "Token không hợp lệ" });
+  }
 };
 
 const refreshTokenMiddleware = async (req, res, next) => {
@@ -56,11 +59,11 @@ const refreshTokenMiddleware = async (req, res, next) => {
 
   const isBlack = await isBlacklisted(refreshToken);
   if (isBlack) {
-      return res.status(403).json({
-          message: "Token đã bị thu hồi",
-          success: false,
-          data: null
-      });
+    return res.status(403).json({
+      message: "Token đã bị thu hồi",
+      success: false,
+      data: null
+    });
   }
 
   const { privateKey, publicKey } = await authHelper.getSecretKey(userId, deviceId);
@@ -102,7 +105,7 @@ const checkRoleMiddleware = (allowedRoles = []) => {
 
 
 module.exports = {
-    authenticateToken,
-    refreshTokenMiddleware,
-    checkRoleMiddleware
+  authenticateToken,
+  refreshTokenMiddleware,
+  checkRoleMiddleware
 };

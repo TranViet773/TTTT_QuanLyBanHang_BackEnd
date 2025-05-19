@@ -8,9 +8,10 @@ router.post('/register', authController.register)
 router.post('/staffs', authenticateToken, checkRoleMiddleware(['admin']), authController.createStaffUser)
 router.get('/verify-email', authController.verifyAndCreateUser)
 router.post('/login', authController.login)
-router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser)
-router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken)
-router.post('/logout', authenticateToken, authController.logout)
+router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser);
+router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken);
+router.post('/logout', authenticateToken, authController.logout);
+router.put('/change-password', authenticateToken, authController.changePassword);
 router.post('/forget-password', authController.forgetPassword)
 
-module.exports = router;    
+module.exports = router;
