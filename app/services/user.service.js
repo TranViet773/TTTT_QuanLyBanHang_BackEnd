@@ -4,9 +4,7 @@ const AccountDevice = require('../models/AccountDevice.model');
 const authService = require('../services/auth.service');
 const authHelper = require('../helpers/auth.helper')
 const { generateKeyPairSync } = require('crypto');
-const crypto = require('crypto');
-const { devNull } = require('os');
-const { error } = require('console');
+const ms = require('ms');
 
 const generateKeyPair = () => {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -167,15 +165,15 @@ const login = async (data) => {
         // Nếu user đăng nhập bằng email
         if (user) {
 
-            if (! authHelper.isValidEmail(user, email)) {
-                return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
-            }
-            
-            // Lấy account theo user id
-            const account = await Account.findOne({ USER_ID: user._id })
-            if (!account) {
-                throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
-            }
+        if (!authHelper.isValidEmail(user, email)) {
+            return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+        }
+        
+        // Lấy account theo user id
+        const account = await Account.findOne({ USER_ID: user._id })
+        if (!account) {
+            throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
+        }
 
             // So sánh password
             if (! await authService.isMatchedPassword(password, account.PASSWORD)) {
@@ -191,22 +189,23 @@ const login = async (data) => {
 
             const device = await loginDevice(accountDevice, deviceId)
 
-            // Lấy dữ liệu cho token
-            const verifyData = {
-                USER_ID: user._id,
-                USERNAME: account.USERNAME,
-                FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-                LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-                EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
-                DEVICE_ID: device.ID_DEVICE || null,
-                DEVICE_NAME: device.NAME_DEVICE || '',
-                IS_ADMIN: user.ROLE.IS_ADMIN,
-                IS_MANAGER: user.ROLE.IS_MANAGER,
-                IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
-                IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-                IS_ACTIVE: account.IS_ACTIVE,
-                AVATAR: user.AVATAR_IMG_URL
-            }
+        // Lấy dữ liệu cho token
+        const verifyData = {
+            USER_ID: user._id,
+            USERNAME: account.USERNAME,
+            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+            DEVICE_ID: device.ID_DEVICE || null,
+            DEVICE_NAME: device.NAME_DEVICE || '',
+            IS_ADMIN: user.ROLE.IS_ADMIN,
+            IS_MANAGER: user.ROLE.IS_MANAGER,
+            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+            IS_ACTIVE: account.IS_ACTIVE,
+            AVATAR: user.AVATAR_IMG_URL,
+            DEVICE_ID: device.ID_DEVICE || null,
+        }
 
             console.log("Test verify device data: ", device)
 
@@ -274,33 +273,49 @@ const login = async (data) => {
             }
         }
     }
-    
-    
 
+};
+
+const handleRefreshToken = async (userData) => {
+  try {
+    console.log("userData: ", userData)
+    const {privateKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+    console.log("error: ", error)
+    if(error) {
+        return {error: "Thiết bị không hợp lệ 3"}
+    }
+    const newAccessToken = authService.generateAccessToken(userData, privateKey);
+    const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+    return {newAccessToken, accessTokenExp: expToken};
+  }catch (error) {
+    console.error('Lỗi khi làm mới token:', error);
+    return {error: "Lỗi khi làm mới token."}
+  }
+};
+
+const handleLogout = async (userData, refreshToken, accessToken) => {
+    try {
+        const {publicKey, error} = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        if(error) {
+            return {error: "Thiết bị không hợp lệ 2"}
+        }
+         if (refreshToken) {
+            await addToBlacklist(refreshToken, publicKey);
+        }
+
+        if (accessToken) {
+            await addToBlacklist(accessToken, publicKey);
+        }
+    } catch (error) {
+        console.error('Lỗi khi đăng xuất:', error);
+    }
 }
 
-const handleForgotPassword = async (data) => {
-
-    if (!data.email) {
-        return {error: "Vui lòng nhập email."}
-    }
-    
-    const user = await User.findOne( {"LIST_EMAIL.EMAIL": data.email })
-
-    if (!user) {
-        return {error: "Email chưa được đăng ký"}
-    }
-
-    if (! await authHelper.isValidEmail(user, data.email)) {
-        return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
-    }
-
-    await authService.sendVerificationEmail(data)
-}
 
 module.exports = {
     handleCreateUser,
     handleRegistration,
     login,
-    handleForgotPassword,
+    handleRefreshToken,
+    handleLogout
 }

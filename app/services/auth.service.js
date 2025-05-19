@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const mailerHelper = require('../helpers/mailer.helper');
 const fs = require('fs');
 const path = require('path');
-const generateAccessToken = (user, publicKey) => {
+const generateAccessToken = (user, privateKey) => {
   return jwt.sign(
     { 
       USER_ID: user.USER_ID,
@@ -19,9 +19,10 @@ const generateAccessToken = (user, publicKey) => {
       IS_SERVICE_STAFF: user.IS_SERVICE_STAFF,
       IS_CUSTOMER: user.IS_CUSTOMER,
       IS_ACTIVE: user.IS_ACTIVE,
-      AVATAR: user.AVATAR
+      AVATAR: user.AVATAR,
+      DEVICE_ID: user.DEVICE_ID,
     },
-    publicKey, // Dùng privateKey để ký
+    privateKey, // Dùng privateKey để ký
     { algorithm: 'RS256', expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
@@ -41,7 +42,6 @@ const hashPassword = async (password) => {
 };
 
 
-
 //Gửi mail xác thực
 async function sendVerificationEmail(data){ 
 
@@ -54,7 +54,7 @@ async function sendVerificationEmail(data){
 
   // Thay thế các biến trong template
   html = html.replace(/{{userId}}/g, data.firstName);
-  html = html.replace(/{{verificationUrl}}/g, verificationUrl);
+  html = html.replace(/{{verificationUrl}}/g, verificationUrl); 
   try {
     await mailerHelper.transporter.sendMail({
       from: `"Hệ thống quản lý doanh nghiệp" <${process.env.EMAIL}>`, 
@@ -73,6 +73,10 @@ async function sendVerificationEmail(data){
 const isMatchedPassword = async (plainPassword, hashedPassword) => {
     return await bcrypt.compare(plainPassword, hashedPassword)
 }
+
+
+
+
 
 module.exports = {
   generateAccessToken,
