@@ -10,6 +10,15 @@ const isValidEmail = (user, email) => {
     );
 };
 
+const isValidInfo = (listInfo) => {
+    const now = new Date()
+    return listInfo.some(info =>
+        info.FROM_DATE <= now &&
+        (info.THRU_DATE === null || info.THRU_DATE > now)
+    )
+}
+
+
 const getSecretKey = async (userId, deviceId) => {
     const accountDevice = await AccountDeviceModel.findOne({ USER_ID: userId});
     if(!accountDevice) {
@@ -27,5 +36,6 @@ const getSecretKey = async (userId, deviceId) => {
 
 module.exports = {
     isValidEmail,
-    getSecretKey
+    getSecretKey,
+    isValidInfo
 }

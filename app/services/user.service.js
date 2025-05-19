@@ -3,6 +3,8 @@ const Account = require('../models/Account.model');
 const AccountDevice = require('../models/AccountDevice.model');
 const authService = require('../services/auth.service');
 const authHelper = require('../helpers/auth.helper')
+const { isValidInfo } = require('../helpers/auth.helper');
+
 const { generateKeyPairSync } = require('crypto');
 const ms = require('ms');
 
@@ -303,15 +305,88 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
         console.error('Lỗi khi đăng xuất:', error);
     }
 }
- 
-const updateUser = async (userId, data) => {
-     const user = await User.findById(userId);
-        if (!user) {
-            return { error: 'Người dùng không tồn tại' };
-        }
-        // Cập nhật thông tin người dùng
 
-     
+const updateUser = async (userId, data) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        return { error: 'Người dùng không tồn tại' };
+    }
+    // Cập nhật thông tin người dùng
+    if (data.firstName || data.lastName) {
+          const now = new Date(); 
+        // cập nhật ngày kết thúc của tên hiện tại
+        const currentName = user.LIST_NAME.find(name => isValidInfo([name]));
+        if (currentName) {
+            currentName.THRU_DATE = now;
+        }
+        // tạo tên mới
+        // nếu không có lastName thì lấy firstName
+        const fullName = `${data.lastName || ''} ${data.firstName || ''}`.trim();
+       // tạo bản ghi mới cho tên
+        user.LIST_NAME.push({
+            LAST_NAME: data.lastName || '',
+            FIRST_NAME: data.firstName || '',
+            MIDDLE_NAME: '',
+            FULL_NAME: fullName,
+            FROM_DATE: now,
+            THRU_DATE: null,
+        });
+    }
+    if (data.gender) {
+        user.CURRENT_GENDER = data.gender;
+    }
+    if (data.dob) {
+        user.BIRTH_DATE = new Date(data.dob);
+    }
+    if (data.avatar) {
+        user.AVATAR_IMG_URL = data.avatar;
+    }
+   
+    if (data.address) {
+        const  now = new Date();
+        const currentAddress = user.LIST_ADDRESS.find(address => isValidInfo([address]));
+        if (currentAddress) {
+            currentAddress.THRU_DATE = now;
+        }
+        user.LIST_ADDRESS.push({
+            COUNTRY: data.address.country || '',
+            CITY: data.address.city || '',
+            DISTRICT: data.address.district || '',
+            WARD: data.address.ward || '',
+            ADDRESS_1: data.address.address1 || '',
+            ADDRESS_2: data.address.address2 || '',
+            STATE: data.address.state || '',
+            FROM_DATE: now,
+            THRU_DATE: null,
+        });
+    }
+    if (data.phone ){
+        const now = new Date();
+        // tìm kiếm số điện thoại còn hiệu lực
+        const currentPhone = user.LIST_PHONE_NUMBER.find(phone => isValidInfo([phone]));
+        // nếu có thì cập nhật nó thành ngày kết thúc
+        if (currentPhone) {
+            currentPhone.THRU_DATE = now;
+        }
+        // tạo bản ghi mới cho số điện thoại
+        user. LIST_PHONE_NUMBER.push({
+            COUNTRY_CODE: data.phone.countryCode || '',
+            COUNTRY_NAME: data.phone.countryName || '',
+            AREA_CODE: data.phone.areaCode || '',
+            PHONE_NUMBER: data.phone.phoneNumber || '',
+            FULL_PHONE_NUMBER: data.phone.fullPhoneNumber || '',
+            FROM_DATE: new Date(),
+            THRU_DATE: null,
+        });
+    }
+    await user.save();
+    return {
+        success: true,
+        message: 'Cập nhật thông tin người dùng thành công'
+    };
+
+
+
 };
 
 module.exports = {
@@ -319,5 +394,6 @@ module.exports = {
     handleRegistration,
     login,
     handleRefreshToken,
-    handleLogout
+    handleLogout,
+    updateUser,
 }
