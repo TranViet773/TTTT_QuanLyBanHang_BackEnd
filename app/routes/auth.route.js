@@ -4,10 +4,13 @@ const authController = require('../controllers/auth.controller');
 const { authenticateToken, refreshTokenMiddleware, checkRoleMiddleware } = require('../middlewares/auth.middleware');
 
 // Post /api/auth/register
-router.post('/register', authController.register);
-router.get('/verify-email', authController.verifyAndCreateUser);
+router.post('/register', authController.register)
+router.post('/staffs', authenticateToken, checkRoleMiddleware(['admin']), authController.createStaffUser)
+router.get('/verify-email', authController.verifyAndCreateUser)
 router.post('/login', authController.login)
-router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser);
-router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken);
-router.post('/logout', authenticateToken, authController.logout);
-module.exports = router;
+router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser)
+router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken)
+router.post('/logout', authenticateToken, authController.logout)
+router.post('/forget-password', authController.forgetPassword)
+
+module.exports = router;    

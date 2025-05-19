@@ -48,11 +48,11 @@ async function sendVerificationEmail(data){
   const templatePath = path.join(__dirname, '..', 'helpers', 'templates', 'verifyEmailTemplate.html');
   let html = fs.readFileSync(templatePath, 'utf8');
 
-  // data là thông tin người dùng, Gửi qua đây để ký và token và truyền quan api.
+  // data là thông tin người dùng, Gửi qua đây để ký và token và truyền qua api.
   const tokenVerifyEmail = jwt.sign(data, process.env.EMAIL_SECRET_KEY, {expiresIn: process.env.EMAIL_TOKEN_EXPIRY});
   const verificationUrl = `http://localhost:${process.env.PORT}/api/auth/verify-email?token=${tokenVerifyEmail}`;
 
-    // Thay thế các biến trong template
+  // Thay thế các biến trong template
   html = html.replace(/{{userId}}/g, data.firstName);
   html = html.replace(/{{verificationUrl}}/g, verificationUrl); 
   try {
@@ -67,6 +67,30 @@ async function sendVerificationEmail(data){
     return { error: 'Lỗi gửi email xác thực' };
   }
 };
+
+const mailToStaffUser = async (data) => {
+
+    console.log('Email')
+
+    const templatePath = path.join(__dirname, '..', 'helpers', 'templates', 'welcomeStaffTemplate.html');
+    let html = fs.readFileSync(templatePath, 'utf8');
+
+    // Thay thế các biến trong template
+    html = html.replace(/{{username}}/g, data.username);
+    html = html.replace(/{{password}}/g, data.password); 
+    try {
+        await mailerHelper.transporter.sendMail({
+          from: `"Hệ thống quản lý doanh nghiệp" <${process.env.EMAIL}>`, 
+          to: data.email,
+          subject: 'Cấp tài khoản nội bộ',
+          html: html
+        });
+    } catch (error) {
+        console.error('Lỗi gửi email cấp tài khoản:', error);
+        return { error: 'Lỗi gửi email cấp tài khoản' };
+    }
+
+}
 
 
 // Kiểm tra password
@@ -83,5 +107,6 @@ module.exports = {
   generateRefreshToken,
   hashPassword,
   isMatchedPassword,
-  sendVerificationEmail
+  sendVerificationEmail,
+  mailToStaffUser,
 };
