@@ -164,7 +164,6 @@ const logout = async (req, res) => {
     }
 }
 
-<<<<<<< HEAD
 const forgetPassword = async (req, res) => {
     try {
         const response = await userService.handleForgotPassword(req.body)
@@ -189,18 +188,10 @@ const forgetPassword = async (req, res) => {
                 });
         }
 }
-=======
->>>>>>> f821359ed1b3dca54cb38b37f430c801e8b63b1c
 
 module.exports = {
     register,
     verifyAndCreateUser,
     login,
-<<<<<<< HEAD
     forgetPassword,
-=======
-    getCurrentUser,
-    refreshToken,
-    logout
->>>>>>> f821359ed1b3dca54cb38b37f430c801e8b63b1c
 }

@@ -311,11 +311,30 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
     }
 }
 
+const handleForgotPassword = async (data) => {
+
+    if (!data.email) {
+        return {error: "Vui lòng nhập email."}
+    }
+    
+    const user = await User.findOne( {"LIST_EMAIL.EMAIL": data.email })
+
+    if (!user) {
+        return {error: "Email chưa được đăng ký"}
+    }
+
+    if (! await authHelper.isValidEmail(user, data.email)) {
+        return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+    }
+
+    await authService.sendVerificationEmail(data)
+}
 
 module.exports = {
     handleCreateUser,
     handleRegistration,
     login,
     handleRefreshToken,
-    handleLogout
+    handleLogout,
+    handleForgotPassword,
 }
