@@ -156,68 +156,76 @@ const loginDevice = async (accountDevice, deviceId) => {
 
 const login = async (data) => {
     const {username, email, password, deviceId} = data 
-    const user = await User.findOne({ "LIST_EMAIL.EMAIL" : email})
 
     if ((!username || !email) && !password) {
         return {error: "Vui lòng nhập đầy đủ thông tin đăng nhập."}
     }
-    
-    // Nếu user đăng nhập bằng email
-    if (user) {
 
-        if (! authHelper.isValidEmail(user, email)) {
-            return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+    if (email) {
+        const user = await User.findOne({ "LIST_EMAIL.EMAIL" : email})
+
+        // Nếu user đăng nhập bằng email
+        if (user) {
+
+            if (! authHelper.isValidEmail(user, email)) {
+                return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+            }
+            
+            // Lấy account theo user id
+            const account = await Account.findOne({ USER_ID: user._id })
+            if (!account) {
+                throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
+            }
+
+            // So sánh password
+            if (! await authService.isMatchedPassword(password, account.PASSWORD)) {
+                return {error: "Sai mật khẩu."}
+            }
+
+            const accountDevice = await AccountDevice.findOne({ USER_ID: user._id })
+            console.log(accountDevice)
+            console.log(user._id)
+            if (!accountDevice) {
+                throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
+            }
+
+            const device = await loginDevice(accountDevice, deviceId)
+
+            // Lấy dữ liệu cho token
+            const verifyData = {
+                USER_ID: user._id,
+                USERNAME: account.USERNAME,
+                FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+                LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+                EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+                DEVICE_ID: device.ID_DEVICE || null,
+                DEVICE_NAME: device.NAME_DEVICE || '',
+                IS_ADMIN: user.ROLE.IS_ADMIN,
+                IS_MANAGER: user.ROLE.IS_MANAGER,
+                IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+                IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+                IS_ACTIVE: account.IS_ACTIVE,
+                AVATAR: user.AVATAR_IMG_URL
+            }
+
+            console.log("Test verify device data: ", device)
+
+            const accessToken = authService.generateAccessToken(verifyData, device.PRIVATE_KEY);
+            const refreshToken = authService.generateRefreshToken(verifyData, device.PRIVATE_KEY);
+
+            return {
+                accessToken,
+                refreshToken
+            }
         }
-        
-        // Lấy account theo user id
-        const account = await Account.findOne({ USER_ID: user._id })
-        if (!account) {
-            throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
-        }
 
-        // So sánh password
-        if (! await authService.isMatchedPassword(password, account.PASSWORD)) {
-            return {error: "Sai mật khẩu."}
-        }
-
-        const accountDevice = await AccountDevice.findOne({ USER_ID: user._id })
-        console.log(accountDevice)
-        console.log(user._id)
-        if (!accountDevice) {
-            throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
-        }
-
-        const device = await loginDevice(accountDevice, deviceId)
-
-        // Lấy dữ liệu cho token
-        const verifyData = {
-            USER_ID: user._id,
-            USERNAME: account.USERNAME,
-            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
-            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
-            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
-            DEVICE_ID: device.ID_DEVICE || null,
-            DEVICE_NAME: device.NAME_DEVICE || '',
-            IS_ADMIN: user.ROLE.IS_ADMIN,
-            IS_MANAGER: user.ROLE.IS_MANAGER,
-            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
-            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-            IS_ACTIVE: account.IS_ACTIVE,
-            AVATAR: user.AVATAR_IMG_URL
-        }
-
-        console.log("Test verify device data: ", device)
-
-        const accessToken = authService.generateAccessToken(verifyData, device.PRIVATE_KEY);
-        const refreshToken = authService.generateRefreshToken(verifyData, device.PRIVATE_KEY);
-
-        return {
-            accessToken,
-            refreshToken
+        else {
+                return {error: "Email chưa được đăng ký."}
         }
     }
 
     // Đăng nhập bằng username
+    
     else {
         const account = await Account.findOne({USERNAME: username})
         if (!account) {
@@ -266,12 +274,33 @@ const login = async (data) => {
             }
         }
     }
+    
+    
 
 }
 
+const handleForgotPassword = async (data) => {
+
+    if (!data.email) {
+        return {error: "Vui lòng nhập email."}
+    }
+    
+    const user = await User.findOne( {"LIST_EMAIL.EMAIL": data.email })
+
+    if (!user) {
+        return {error: "Email chưa được đăng ký"}
+    }
+
+    if (! await authHelper.isValidEmail(user, data.email)) {
+        return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+    }
+
+    await authService.sendVerificationEmail(data)
+}
 
 module.exports = {
     handleCreateUser,
     handleRegistration,
-    login
+    login,
+    handleForgotPassword,
 }

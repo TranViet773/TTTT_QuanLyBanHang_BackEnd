@@ -1,4 +1,4 @@
-const userService = require('../services/user.service');
+const userService = require('../services/User.service');
 const jwt = require('jsonwebtoken');
 
 const register = async (req, res) => {
@@ -12,7 +12,7 @@ const register = async (req, res) => {
             });
         }else{
           return res.status(200).json({
-                message: "Đã gưi mail xác thực tài khoản đến email của bạn",
+                message: "Đã gửi mail xác thực tài khoản đến email của bạn",
                 success: true,
                 data: null,
             });
@@ -79,8 +79,34 @@ const login = async (req, res) => {
     }
 }
 
+const forgetPassword = async (req, res) => {
+    try {
+        const response = await userService.handleForgotPassword(req.body)
+            if(response?.error) {
+                return res.status(409).json({
+                    message: response.error,
+                    success: false,
+                    data: null,
+                });
+            }else{
+            return res.status(200).json({
+                    message: "Đã gửi mail xác thực tài khoản đến email của bạn",
+                    success: true,
+                    data: null,
+                });
+            }
+        } catch (error) {
+            return res.status(500).json({
+                    message: error.message,
+                    success: false,
+                    data: null,
+                });
+        }
+}
+
 module.exports = {
     register,
     verifyAndCreateUser,
-    login
+    login,
+    forgetPassword,
 }
