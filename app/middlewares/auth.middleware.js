@@ -27,7 +27,6 @@ const authenticateToken = async (req, res, next) => {
                 data: null
             });
         } 
-        console.log("flag 1");
         const {privateKey, publicKey, error} = await authHelper.getSecretKey(userId, deviceId);
         if(error) {
             return res.status(401).json({
@@ -36,7 +35,6 @@ const authenticateToken = async (req, res, next) => {
                 data: null
             });
         }
-        console.log("accessToken: ", accessToken);
         const decoded = jwt.verify(accessToken, publicKey); // Hoặc dùng key từ DB/device
         req.user = decoded; 
         next();

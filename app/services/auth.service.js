@@ -27,6 +27,7 @@ const generateAccessToken = (user, privateKey) => {
   );
 };
 
+
 const generateRefreshToken = (user, privateKey) => {
   return jwt.sign(
     { userId: user._id },
@@ -73,10 +74,6 @@ async function sendVerificationEmail(data){
 const isMatchedPassword = async (plainPassword, hashedPassword) => {
     return await bcrypt.compare(plainPassword, hashedPassword)
 }
-
-
-
-
 
 module.exports = {
   generateAccessToken,

@@ -10,4 +10,5 @@ router.post('/login', authController.login)
 router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser);
 router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken);
 router.post('/logout', authenticateToken, authController.logout);
+
 module.exports = router;

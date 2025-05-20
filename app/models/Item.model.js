@@ -51,6 +51,16 @@ const itemSchema = new mongoose.Schema(
             ref: 'User',
         },
 
+        UPDATED_AT: {
+            type: Date,
+            default: Date.now,
+        },
+
+        CREATED_AT: {
+            type: Date,
+            default: Date.now,
+        },
+
         ITEM_STOCKS: {
             type: new mongoose.Schema({
                 quantity: { type: Number, },

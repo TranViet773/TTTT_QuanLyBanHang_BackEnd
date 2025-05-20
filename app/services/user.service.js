@@ -5,6 +5,7 @@ const authService = require('../services/auth.service');
 const authHelper = require('../helpers/auth.helper')
 const { generateKeyPairSync } = require('crypto');
 const ms = require('ms');
+const { addTokenToBlacklist } = require('../utils/tokenBlacklist');
 
 const generateKeyPair = () => {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -122,7 +123,6 @@ const handleCreateUser = async (data) => {
 
 // Kiểm tra thiết bị đăng nhập
 const loginDevice = async (accountDevice, deviceId) => {
-    console.log("Device: ", deviceId)
     // Kiểm tra thiết bị đăng nhập
     for (let i = 0; i <= accountDevice.LIST_DEVICE_OF_ACCOUNT.length - 1; i++) {
         // Nếu thiết bị đã được lưu
@@ -179,8 +179,7 @@ const login = async (data) => {
         }
 
         const accountDevice = await AccountDevice.findOne({ USER_ID: user._id })
-        console.log(accountDevice)
-        console.log(user._id)
+
         if (!accountDevice) {
             throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
         }
@@ -205,7 +204,6 @@ const login = async (data) => {
             DEVICE_ID: device.ID_DEVICE || null,
         }
 
-        console.log("Test verify device data: ", device)
 
         const accessToken = authService.generateAccessToken(verifyData, device.PRIVATE_KEY);
         const refreshToken = authService.generateRefreshToken(verifyData, device.PRIVATE_KEY);
@@ -255,7 +253,6 @@ const login = async (data) => {
                 IS_ACTIVE: account.IS_ACTIVE,
                 AVATAR: user.AVATAR_IMG_URL
             }
-            console.log("Test verify device data: ", device)
             const accessToken = authService.generateAccessToken(verifyData, device.PRIVATE_KEY);
             const refreshToken = authService.generateRefreshToken(verifyData, device.PRIVATE_KEY);
 
@@ -277,7 +274,7 @@ const handleRefreshToken = async (userData) => {
         return {error: "Thiết bị không hợp lệ 3"}
     }
     const newAccessToken = authService.generateAccessToken(userData, privateKey);
-    const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+    const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn 
     return {newAccessToken, accessTokenExp: expToken};
   }catch (error) {
     console.error('Lỗi khi làm mới token:', error);
@@ -292,11 +289,11 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
             return {error: "Thiết bị không hợp lệ 2"}
         }
          if (refreshToken) {
-            await addToBlacklist(refreshToken, publicKey);
+            await addTokenToBlacklist(refreshToken, publicKey);
         }
 
         if (accessToken) {
-            await addToBlacklist(accessToken, publicKey);
+            await addTokenToBlacklist(accessToken, publicKey);
         }
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);
