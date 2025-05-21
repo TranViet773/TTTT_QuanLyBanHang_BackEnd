@@ -12,8 +12,6 @@ const authenticateToken = async (req, res, next) => {
   const userId = req.body.userId;
   //const userId = req.user?.USER_ID || req.body.userId;
 
-
-
   if (!accessToken)
     return res.status(401).json({
       message: "Chưa đăng nhập",

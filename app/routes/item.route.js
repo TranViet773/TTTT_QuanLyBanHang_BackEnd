@@ -10,5 +10,6 @@ router.post('/', authenticateMiddleware.authenticateToken, itemController.create
 router.get('/item-type/:id', authenticateMiddleware.authenticateToken, itemController.getAllByItemTypeId);
 router.put('/:id', authenticateMiddleware.authenticateToken, itemController.updateItem);
 router.delete('/:id', authenticateMiddleware.authenticateToken, itemController.deleteItem);
+router.get('/search', authenticateMiddleware.authenticateToken, itemController.searchProducts);
 
 module.exports = router;

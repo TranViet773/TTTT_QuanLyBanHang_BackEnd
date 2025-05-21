@@ -405,10 +405,25 @@ const login = async (data) => {
 
 };
 
-const handleRefreshToken = async (userData) => {
+const handleRefreshToken = async (userId, deviceId) => {
     try {
-        console.log("userData: ", userData)
-        const { privateKey, error } = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        const user = await User.findById({_id: userId});
+        const account = await Account.findOne({USER_ID: userId});
+        const userData = {
+            USER_ID: user._id,
+            USERNAME: account.USERNAME,
+            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+            DEVICE_ID: deviceId,
+            IS_ADMIN: user.ROLE.IS_ADMIN,
+            IS_MANAGER: user.ROLE.IS_MANAGER,
+            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+            IS_ACTIVE: account.IS_ACTIVE,
+            AVATAR: user.AVATAR_IMG_URL                                  
+        }
+        const { privateKey, error } = await authHelper.getSecretKey(userId, deviceId);
         console.log("error: ", error)
         if (error) {
             return { error: "Thiết bị không hợp lệ 3" }
