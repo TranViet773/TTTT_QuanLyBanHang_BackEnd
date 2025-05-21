@@ -1,4 +1,5 @@
 const itemService = require('../services/item.service');
+const Item = require('../models/Item.model');
 
 const getAllItems = async (req, res) => {
     try {
@@ -144,11 +145,37 @@ const deleteItem = async (req, res) => {
         });
     }
 };
+
+const searchProducts = async (req, res) => {
+    
+    console.log('Search products');
+    const nameQuery = req.query.name;
+
+    if (!nameQuery) return res.status(400).json({ message: 'Missing search query' });
+
+    // Tách từng từ khóa (bỏ dấu cách thừa)
+    const keywords = nameQuery.trim().split(/\s+/);
+
+    // Tạo regex kiểu: (?=.*Việt)(?=.*12).*
+    const regexString = keywords.map(word => `(?=.*${word})`).join('') + '.*';
+    const regex = new RegExp(regexString, 'i'); // 'i' = không phân biệt hoa thường
+
+    try {
+        const products = await Item.find({ name: { $regex: regex } });
+        res.json(products);
+    } catch (err) {
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+
+
 module.exports = {
     getAllItems,
     getItemByCode,
     createItem,
     getAllByItemTypeId,
     updateItem,
-    deleteItem
+    deleteItem,
+    searchProducts
 };  

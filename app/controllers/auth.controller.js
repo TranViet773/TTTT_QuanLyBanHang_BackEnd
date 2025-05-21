@@ -142,7 +142,9 @@ const getCurrentUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     try{
-        const response = await userService.handleRefreshToken(req.user);
+        const userId = req.body.userId;
+        const deviceId = req.body.deviceId;
+        const response = await userService.handleRefreshToken(userId, deviceId);
         // console.log("Response: ", response.newAccessToken)
         if(!response.error) {
             res.cookie('accessToken', response.newAccessToken, {

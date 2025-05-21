@@ -9,7 +9,7 @@ router.post('/staffs', authenticateToken, checkRoleMiddleware(['admin']), authCo
 router.get('/verify-email', authController.verifyAndCreateUser)
 router.post('/login', authController.login)
 router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer']),authController.getCurrentUser);
-router.post('/refresh-token',authenticateToken, refreshTokenMiddleware, authController.refreshToken);
+router.post('/refresh-token', refreshTokenMiddleware, authController.refreshToken);
 router.post('/logout', authenticateToken, authController.logout);
 router.put('/change-password', authenticateToken, authController.changePassword);
 router.post('/forget-password', authController.forgetPassword)
