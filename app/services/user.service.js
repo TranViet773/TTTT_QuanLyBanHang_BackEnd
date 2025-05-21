@@ -7,6 +7,7 @@ const { isValidInfo } = require('../helpers/auth.helper');
 
 const { generateKeyPairSync } = require('crypto');
 const ms = require('ms');
+const { addTokenToBlacklist } = require('../utils/tokenBlacklist');
 
 // tạo cặp khóa RSA cho từng thiết bị đăng nhập
 const generateKeyPair = () => {
@@ -50,7 +51,6 @@ const handleUserDataForResponse = (user, account, device) => {
     const name = authHelper.isValidInfo(user.LIST_NAME)
     const address = authHelper.isValidInfo(user.LIST_ADDRESS)
     const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER)
-    
     const now = new Date()
     return {
         accessToken,
@@ -96,8 +96,8 @@ const handleUserDataForResponse = (user, account, device) => {
                 DEVICE_NAME: device.NAME_DEVICE || '',
                 LAST_TIME_LOGIN: device.LAST_TIME_LOGIN,
             },
-            ACCESS_TOKEN_EXPIRY: Math.floor(((now).getTime() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000), 
-            REFRESH_TOKEN_EXPIRY: Math.floor(((now).getTime() + ms(process.env.REFRESH_TOKEN_EXPIRY)) / 1000),
+            ACCESS_TOKEN_EXPIRY: (new Date(Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY))).toISOString(), 
+            REFRESH_TOKEN_EXPIRY: (new Date(Date.now() + ms(process.env.REFRESH_TOKEN_EXPIRY))).toISOString(),
         }
     }
 }
@@ -267,7 +267,6 @@ const handleCreateUser = async (data) => {
 
 };
 
-
 // Kiểm tra thiết bị đăng nhập
 const loginDevice = async (accountDevice, deviceId = null, deviceName, deviceType) => {
 
@@ -406,16 +405,31 @@ const login = async (data) => {
 
 };
 
-const handleRefreshToken = async (userData) => {
+const handleRefreshToken = async (userId, deviceId) => {
     try {
-        console.log("userData: ", userData)
-        const { privateKey, error } = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        const user = await User.findById({_id: userId});
+        const account = await Account.findOne({USER_ID: userId});
+        const userData = {
+            USER_ID: user._id,
+            USERNAME: account.USERNAME,
+            FIRST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].FIRST_NAME,
+            LAST_NAME: user.LIST_NAME[user.LIST_NAME.length-1].LAST_NAME,
+            EMAIL: user.LIST_EMAIL[user.LIST_EMAIL.length-1].EMAIL,
+            DEVICE_ID: deviceId,
+            IS_ADMIN: user.ROLE.IS_ADMIN,
+            IS_MANAGER: user.ROLE.IS_MANAGER,
+            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+            IS_ACTIVE: account.IS_ACTIVE,
+            AVATAR: user.AVATAR_IMG_URL                                  
+        }
+        const { privateKey, error } = await authHelper.getSecretKey(userId, deviceId);
         console.log("error: ", error)
         if (error) {
             return { error: "Thiết bị không hợp lệ 3" }
         }
         const newAccessToken = authService.generateAccessToken(userData, privateKey);
-        const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+        const expToken = (new Date(Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY))).toISOString(); //timpestamp hết hạn
         return { newAccessToken, accessTokenExp: expToken };
     } catch (error) {
         console.error('Lỗi khi làm mới token:', error);
@@ -429,12 +443,12 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
         if (error) {
             return { error: "Thiết bị không hợp lệ 2" }
         }
-        if (refreshToken) {
-            await addToBlacklist(refreshToken, publicKey);
+         if (refreshToken) {
+            await addTokenToBlacklist(refreshToken, publicKey);
         }
 
         if (accessToken) {
-            await addToBlacklist(accessToken, publicKey);
+            await addTokenToBlacklist(accessToken, publicKey);
         }
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);
@@ -459,6 +473,7 @@ const handleForgotPassword = async (data) => {
 
     await authService.sendVerificationEmail(data)
 }
+
 const updateUser = async (userId, data) => {
     const user = await User.findById(userId);
     if (!user) {

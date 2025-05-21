@@ -21,12 +21,12 @@ const generateAccessToken = (user, privateKey) => {
       IS_CUSTOMER: user.IS_CUSTOMER,
       IS_ACTIVE: user.IS_ACTIVE,
       AVATAR: user.AVATAR,
-      DEVICE_ID: user.DEVICE_ID,
     },
     privateKey, // Dùng privateKey để ký
     { algorithm: "RS256", expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
+
 
 const generateRefreshToken = (user, privateKey) => {
   return jwt.sign(

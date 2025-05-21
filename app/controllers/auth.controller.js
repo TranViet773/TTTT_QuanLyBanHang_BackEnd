@@ -83,8 +83,6 @@ const createStaffUser = async (req, res) => {
 const login = async (req, res) => {
     try {
         const response = await userService.login(req.body)
-        console.log("Response: ", response)
-
         if(response.error) {
             res.status(401).json({
                 success: false,
@@ -94,17 +92,18 @@ const login = async (req, res) => {
         }
 
         else {
+            
             res.cookie('accessToken', response.accessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
-                sameSite: 'Strict', // hoặc 'Lax' nếu muốn linh hoạt hơn
+                sameSite: 'Lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
                 maxAge: 15 * 60 * 1000 // 15 phút
             });
 
             res.cookie('refreshToken', response.refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'Strict',
+                sameSite: 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
             });
             res.status(201).json({
@@ -143,13 +142,15 @@ const getCurrentUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     try{
-        const response = await userService.handleRefreshToken(req.user);
+        const userId = req.body.userId;
+        const deviceId = req.body.deviceId;
+        const response = await userService.handleRefreshToken(userId, deviceId);
         // console.log("Response: ", response.newAccessToken)
         if(!response.error) {
             res.cookie('accessToken', response.newAccessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'Strict',
+                sameSite: 'lax',
                 maxAge: 15 * 60 * 1000 // thời gian sống của key trong cookie
             });
             return res.status(200).json({
@@ -158,7 +159,7 @@ const refreshToken = async (req, res) => {
                 data: response,
             }); 
         }else{
-            return res.status(401).json({
+            return res.status(400).json({
                 message: response.error,
                 success: false,
                 data: null,
@@ -231,8 +232,6 @@ const changePassword = async (req, res)=>{
 
 
 };
-
-
 
 const forgetPassword = async (req, res) => {
     try {

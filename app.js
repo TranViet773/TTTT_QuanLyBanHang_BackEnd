@@ -12,6 +12,8 @@ const port = process.env.PORT || 5000;
 const authRoute = require('./app/routes/auth.route');
 const userRoute = require('./app/routes/user.route');
 const supplierRoute = require('./app/routes/supplier.route');
+const itemTypeRoute = require('./app/routes/itemType.route');
+const itemRoute = require('./app/routes/item.route');
 const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
 
 app.use(cors({
@@ -25,6 +27,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
 app.use('/api/supplier', supplierRoute);
+app.use('/api/item-types', itemTypeRoute);
+app.use('/api/items', itemRoute);
 app.use('/api/purchase-invoices', purchaseInvoiceRoute);
 
 app.get('/', (request, respond) => {
