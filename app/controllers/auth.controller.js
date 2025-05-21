@@ -92,17 +92,18 @@ const login = async (req, res) => {
         }
 
         else {
+            
             res.cookie('accessToken', response.accessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
-                sameSite: 'lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
+                sameSite: 'Lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
                 maxAge: 15 * 60 * 1000 // 15 phút
             });
 
             res.cookie('refreshToken', response.refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
+                sameSite: 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
             });
             res.status(201).json({
