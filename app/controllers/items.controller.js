@@ -46,15 +46,6 @@ const getItemByCode = async (req, res) => {
 const createItem = async (req, res) => {
     const itemData = req.body;
     try {
-        const existingItem = await itemService.getItemByCode(itemData.itemCode);
-        if (existingItem) {
-            return res.status(400).json({
-                success: false,
-                message: "Duplicate ITEM_CODE",
-                data: null,
-            });
-        }
-
         const newItem = await itemService.createItem(itemData);
         if(newItem.error) {
             return res.status(400).json({

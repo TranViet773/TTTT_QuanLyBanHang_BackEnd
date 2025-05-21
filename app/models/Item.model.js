@@ -31,9 +31,9 @@ const itemSchema = new mongoose.Schema(
         
         PRICE:[{
             type: new mongoose.Schema({
-                priceAmount: {type: Number,},
-                fromDate:{type: Date},
-                thruDate:{type: Date},
+                PRICE_AMOUNT: {type: Number,},
+                FROM_DATE:{type: Date},
+                THRU_DATE:{type: Date},
             }),
         }],
 
@@ -63,8 +63,8 @@ const itemSchema = new mongoose.Schema(
 
         ITEM_STOCKS: {
             type: new mongoose.Schema({
-                quantity: { type: Number, },
-                last_update: { type: Date },
+                QUANTITY: { type: Number, },
+                LAST_UPDATE: { type: Date },
             }),
             _id: false,
         },
@@ -72,11 +72,11 @@ const itemSchema = new mongoose.Schema(
         BOM_MATERIALS: [
             {
                 type: new mongoose.Schema({
-                    item_code: { type: String },
-                    quantity: { type: Number },
-                    unit: { type: String },
-                    from_date: { type: Date },
-                    thru_date: { type: Date },
+                    ITEM_CODE: { type: String },
+                    QUANTITY: { type: Number },
+                    UNIT: { type: String },
+                    FROM_DATE: { type: Date },
+                    THRU_DATE: { type: Date },
                 }),
             }
         ]

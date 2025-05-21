@@ -1,6 +1,5 @@
 const Item = require("../models/item.model.js");
 const ItemTypeModel = require("../models/ItemType.model.js");
-const GenerateItemCode = require("../utils/generateItemCode.js");
 const getAllItems = async () => {
   try {
     const items = await Item.find();
@@ -35,6 +34,15 @@ const getItemById = async (id) => {
     }
 };
 
+const generateItemCode = async (itemType) => {
+    try {
+        const prefix = itemType.includes('Material') ? "NL" : "SP";
+        const code = Math.floor(Math.random() * 1000000);
+        return `${prefix}${code}`;
+    } catch (error) {
+        return { error: error.message };
+    }
+}
 
 const createItem = async (itemData) => {
     const {
@@ -54,7 +62,7 @@ const createItem = async (itemData) => {
     if (!existingItemType) {
         return { error: "Item type not found" };
     }
-    const itemCode = await GenerateItemCode.generateItemCode(existingItemType.ITEM_TYPE_NAME_EN);
+    const itemCode = await generateItemCode(existingItemType.ITEM_TYPE_NAME_EN);
 
     const existingItem = await Item.findOne({ ITEM_NAME: itemName });
     if (existingItem) {
@@ -97,7 +105,6 @@ const createItem = async (itemData) => {
         return {error: "Error creating item"};
     }
 };
-
 
 const updateItem = async (id, itemData) => {
     try {
