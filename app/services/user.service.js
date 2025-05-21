@@ -67,13 +67,13 @@ const handleUserDataForResponse = (user, account, device) => {
             BIRTH_DATE: user.BIRTH_DATE,
             AVATAR_IMG_URL: user.AVATAR_IMG_URL,
             ADDRESS: {
-                COUNTRY: address.COUNTRY,
-                CITY: address.CITY,
-                DISTRICT: address.DISTRICT,
-                WARD: address.WARD,
-                ADDRESS_1: address.ADDRESS_1,
-                ADDRESS_2: address.ADDRESS_2,
-                STATE: address.STATE,
+                COUNTRY: address?.COUNTRY,
+                CITY: address?.CITY,
+                DISTRICT: address?.DISTRICT,
+                WARD: address?.WARD,
+                ADDRESS_1: address?.ADDRESS_1,
+                ADDRESS_2: address?.ADDRESS_2,
+                STATE: address?.STATE,
             },
             ROLE: {
                 IS_ADMIN: user.ROLE.IS_ADMIN,
@@ -84,11 +84,11 @@ const handleUserDataForResponse = (user, account, device) => {
             },
             EMAIL: email.EMAIL,
             PHONE_NUMBER: {
-                COUNTRY_CODE: phoneNumber.COUNTRY_CODE,
-                COUNTRY_NAME: phoneNumber.COUNTRY_NAME,
-                AREA_CODE: phoneNumber.AREA_CODE,
-                PHONE_NUMBER: phoneNumber.PHONE_NUMBER,
-                FULL_PHONE_NUMBER: phoneNumber.FULL_PHONE_NUMBER
+                COUNTRY_CODE: phoneNumber?.COUNTRY_CODE,
+                COUNTRY_NAME: phoneNumber?.COUNTRY_NAME,
+                AREA_CODE: phoneNumber?.AREA_CODE,
+                PHONE_NUMBER: phoneNumber?.PHONE_NUMBER,
+                FULL_PHONE_NUMBER: phoneNumber?.FULL_PHONE_NUMBER
             },
             ACCOUNT_DEVICE: {
                 DEVICE_ID: device.ID_DEVICE,
