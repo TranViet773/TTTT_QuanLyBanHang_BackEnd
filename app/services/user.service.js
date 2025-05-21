@@ -7,6 +7,7 @@ const { isValidInfo } = require('../helpers/auth.helper');
 
 const { generateKeyPairSync } = require('crypto');
 const ms = require('ms');
+const { addTokenToBlacklist } = require('../utils/tokenBlacklist');
 
 // tạo cặp khóa RSA cho từng thiết bị đăng nhập
 const generateKeyPair = () => {
@@ -50,7 +51,7 @@ const handleUserDataForResponse = (user, account, device) => {
     const name = authHelper.isValidInfo(user.LIST_NAME)
     const address = authHelper.isValidInfo(user.LIST_ADDRESS)
     const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER)
-
+    const now = new Date()
     return {
         accessToken,
         refreshToken,
@@ -95,7 +96,8 @@ const handleUserDataForResponse = (user, account, device) => {
                 DEVICE_NAME: device.NAME_DEVICE || '',
                 LAST_TIME_LOGIN: device.LAST_TIME_LOGIN,
             },
-            ACCESS_TOKEN_EXPIRY: Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000),
+            ACCESS_TOKEN_EXPIRY: (new Date(Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY))).toISOString(), 
+            REFRESH_TOKEN_EXPIRY: (new Date(Date.now() + ms(process.env.REFRESH_TOKEN_EXPIRY))).toISOString(),
         }
     }
 }
@@ -265,7 +267,6 @@ const handleCreateUser = async (data) => {
 
 };
 
-
 // Kiểm tra thiết bị đăng nhập
 const loginDevice = async (accountDevice, deviceId = null, deviceName, deviceType) => {
 
@@ -413,7 +414,7 @@ const handleRefreshToken = async (userData) => {
             return { error: "Thiết bị không hợp lệ 3" }
         }
         const newAccessToken = authService.generateAccessToken(userData, privateKey);
-        const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
+        const expToken = (new Date(Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY))).toISOString(); //timpestamp hết hạn
         return { newAccessToken, accessTokenExp: expToken };
     } catch (error) {
         console.error('Lỗi khi làm mới token:', error);
@@ -427,12 +428,12 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
         if (error) {
             return { error: "Thiết bị không hợp lệ 2" }
         }
-        if (refreshToken) {
-            await addToBlacklist(refreshToken, publicKey);
+         if (refreshToken) {
+            await addTokenToBlacklist(refreshToken, publicKey);
         }
 
         if (accessToken) {
-            await addToBlacklist(accessToken, publicKey);
+            await addTokenToBlacklist(accessToken, publicKey);
         }
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);
@@ -457,6 +458,7 @@ const handleForgotPassword = async (data) => {
 
     await authService.sendVerificationEmail(data)
 }
+
 const updateUser = async (userId, data) => {
     const user = await User.findById(userId);
     if (!user) {

@@ -28,6 +28,7 @@ const generateAccessToken = (user, privateKey) => {
   );
 };
 
+
 const generateRefreshToken = (user, privateKey) => {
   return jwt.sign(
     { userId: user._id },

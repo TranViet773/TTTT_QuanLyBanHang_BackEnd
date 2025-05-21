@@ -83,8 +83,6 @@ const createStaffUser = async (req, res) => {
 const login = async (req, res) => {
     try {
         const response = await userService.login(req.body)
-        console.log("Response: ", response)
-
         if(response.error) {
             res.status(401).json({
                 success: false,
@@ -150,7 +148,7 @@ const refreshToken = async (req, res) => {
             res.cookie('accessToken', response.newAccessToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
-                sameSite: 'Lax',
+                sameSite: 'lax',
                 maxAge: 15 * 60 * 1000 // thời gian sống của key trong cookie
             });
             return res.status(200).json({
@@ -232,8 +230,6 @@ const changePassword = async (req, res)=>{
 
 
 };
-
-
 
 const forgetPassword = async (req, res) => {
     try {
