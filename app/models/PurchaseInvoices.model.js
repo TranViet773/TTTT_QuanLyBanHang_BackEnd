@@ -21,9 +21,9 @@ const purchaseInvoicesSchema = new mongoose.Schema({
 
     STATUS: [{
         type: new mongoose.Schema({
-            status_name: {type: String},
-            from_date: { type: Date, },
-            thru_date: { type: Date, },
+            STATUS_NAME: {type: String},
+            FROM_DATE: { type: Date, },
+            THRU_DATE: { type: Date, },
         }),
 
         _id: false,
@@ -48,8 +48,8 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         {
             type: new mongoose.Schema({
                 ITEM_CODE: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: 'Item',
+                    type: String,
+                    require: true,
                 },
                 QUANTITY: { type: Number },
                 UNIT: { type: String, },
