@@ -157,7 +157,7 @@ const refreshToken = async (req, res) => {
                 data: response,
             }); 
         }else{
-            return res.status(401).json({
+            return res.status(400).json({
                 message: response.error,
                 success: false,
                 data: null,
