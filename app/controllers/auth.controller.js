@@ -233,9 +233,9 @@ const changePassword = async (req, res)=>{
 
 };
 
-const forgetPassword = async (req, res) => {
+const sendForgetPasswordEmail = async (req, res) => {
     try {
-        const response = await userService.handleForgotPassword(req.body)
+        const response = await userService.handleForgetPassword(req.body)
             if(response?.error) {
                 return res.status(409).json({
                     message: response.error,
@@ -258,11 +258,43 @@ const forgetPassword = async (req, res) => {
         }
 }
 
+const verifyAndResetPassword = async (req, res) => {
+    try {
+        const token = req.body.token
+        const data = jwt.verify(token, process.env.EMAIL_SECRET_KEY)
+        data.newPassword = req.body.newPassword
+        console.log(data)
+
+        const response = await userService.resetPassword(data)
+        
+        if (response?.error) {
+            return res.status(500).json({
+                message: response.error,
+                success: false,
+                data: null
+            })
+        }
+
+        return res.status(200).json({
+            message: "Đặt lại mật khẩu thành công.",
+            success: true,
+            data: null
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     register,
     verifyAndCreateUser,
     login,
-    forgetPassword,
+    sendForgetPasswordEmail,
+    verifyAndResetPassword,
     getCurrentUser,
     logout,
     refreshToken,

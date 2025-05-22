@@ -139,13 +139,17 @@ const handleCreateUser = async (data) => {
         }
     }
 
+    // const fullname = {
+    //     ``
+    // }
+
     const userData = {
         LIST_NAME: [
             {
                 LAST_NAME: lastName,
                 FIRST_NAME: firstName,
                 MIDDLE_NAME: middleName,
-                FULL_NAME: `${lastName} ${middleName} ${firstName}`,
+                FULL_NAME: `${lastName} ${firstName}`,
                 FROM_DATE: new Date(),
                 THRU_DATE: null,
             }
@@ -455,7 +459,7 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
     }
 }
 
-const handleForgotPassword = async (data) => {
+const handleForgetPassword = async (data) => {
 
     if (!data.email) {
         return {error: "Vui lòng nhập email."}
@@ -471,7 +475,32 @@ const handleForgotPassword = async (data) => {
         return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
     }
 
-    await authService.sendVerificationEmail(data)
+    data.userId = user._id
+    data.firstName = user.FIRST_NAME || ''
+
+    await authService.sendResetPasswordEmail(data)
+}
+
+const resetPassword = async (data) => {
+    const {userId, newPassword} = data
+
+    const account = await Account.findOne({ USER_ID: userId })
+
+    if (!account) {
+        throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
+    }
+
+    if (await authService.isMatchedPassword(newPassword, account.PASSWORD)) {
+        return {error: "Mật khẩu mới không được trùng với mật khẩu trước đó."}
+    }
+
+    account.PASSWORD = await authService.hashPassword(newPassword)
+
+    try {
+        account.save()
+    } catch (error) {
+        throw new Error("Lỗi xảy ra khi đổi mật khẩu.")
+    }
 }
 
 const updateUser = async (userId, data) => {
@@ -564,5 +593,6 @@ module.exports = {
     handleRefreshToken,
     handleLogout,
     updateUser,
-    handleForgotPassword
+    handleForgetPassword,
+    resetPassword,
 }

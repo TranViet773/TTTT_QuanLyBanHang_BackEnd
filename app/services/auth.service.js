@@ -72,6 +72,36 @@ async function sendVerificationEmail(data) {
   }
 };
 
+async function sendResetPasswordEmail(data) {
+  const templatePath = path.join(
+    __dirname,
+    "..",
+    "helpers",
+    "templates",
+    "forgetPasswordTemplate.html"
+  );
+  let html = fs.readFileSync(templatePath, "utf8");
+
+  // data là thông tin người dùng, Gửi qua đây để ký và token và truyền qua api.
+  const tokenVerifyEmail = jwt.sign(data, process.env.EMAIL_SECRET_KEY, {expiresIn: process.env.EMAIL_TOKEN_EXPIRY});
+  const verificationUrl = `http://localhost:5173/resetPassword?token=${tokenVerifyEmail}`;
+
+  // Thay thế các biến trong template
+  html = html.replace(/{{userId}}/g, data.firstName);
+  html = html.replace(/{{verificationUrl}}/g, verificationUrl);
+  try {
+    await mailerHelper.transporter.sendMail({
+      from: `"Hệ thống quản lý doanh nghiệp" <${process.env.EMAIL}>`,
+      to: data.email,
+      subject: "Quên mật khẩu tài khoản",
+      html: html,
+    });
+  } catch (error) {
+    console.error("Lỗi gửi email xác thực quên mật khẩu:", error);
+    return { error: "Lỗi gửi email xác thực quên mật khẩu." };
+  }
+};
+
 const mailToStaffUser = async (data) => {
 
     console.log('Email')
@@ -134,6 +164,7 @@ module.exports = {
   hashPassword,
   isMatchedPassword,
   sendVerificationEmail,
+  sendResetPasswordEmail,
   mailToStaffUser,
   changePassword
 };
