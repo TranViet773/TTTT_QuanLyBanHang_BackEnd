@@ -1,9 +1,9 @@
 const userService = require('../services/user.service');
 
-const updateUser  = async (req, res) => {
+const updateUser = async (req, res) => {
     try {
         const userId = req.user.USER_ID; // lấy từ middleware để xác thực 
-         const data = req.body;
+        const data = req.body;
         const result = await userService.updateUser(userId, data);
         if (result.error) {
             return res.status(401).json({
@@ -29,6 +29,50 @@ const updateUser  = async (req, res) => {
         });
     }
 };
+
+// // hàm này dùng để chuyển đổi giá trị từ chuỗi sang boolean
+// const parseBoolean = (value) => {
+//     if (value === "true") {
+//         return true;
+//     }
+//     if (value === "false") {
+//         return false;
+//     }
+//     return undefined;
+// }
+
+const getUsers = async (req, res) => {
+    try {
+
+        const { page, limit, role } = req.query;
+        const result = await userService.getUserByID({
+          page,
+          limit,
+          role
+        });
+        res.status(200).json({
+            message: "Lấy thông tin người dùng thành công",
+            success: true,
+            data: result
+        });
+
+
+    } catch (error) {
+    console.error(error);
+    res.status(500).json({
+        message: "Lôi lấy thông tin người dùng",
+        success: false,
+        error: error.message
+    })
+}
+
+}
+
+
+
+
+
 module.exports = {
-    updateUser 
+    updateUser,
+    getUsers
 };

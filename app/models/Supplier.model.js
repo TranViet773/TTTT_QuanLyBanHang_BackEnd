@@ -36,6 +36,7 @@ const supplierSchema = new mongoose.Schema({
     IS_ACTIVE: {
         type: Boolean,
         required: true,
+        default: true,
     }
 })
 
