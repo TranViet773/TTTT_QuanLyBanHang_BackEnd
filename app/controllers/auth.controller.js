@@ -217,7 +217,7 @@ const changePassword = async (req, res)=>{
             });
         }
         return res.status(200).json({
-            message: "Đổi mật khẩu thành công hehehe",
+            message: "Đổi mật khẩu thành công",
             success: true,
             data: null
         });
