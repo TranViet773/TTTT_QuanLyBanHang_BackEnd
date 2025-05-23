@@ -199,15 +199,16 @@ const changePassword = async (req, res)=>{
 
     try {
         const userId = req.user.USER_ID;
-        const {oldPassword, newPassword, confirmNewPassword} = req.body;
-        if(newPassword !== confirmNewPassword) {
-            return res.status(401).json({
-                message: "Mật khẩu mới không khớp",
+        const {oldPassword, newPassword} = req.body;
+       
+        const result = await authService.changePassword(userId, oldPassword, newPassword);
+        if (oldPassword === newPassword) {
+            return res.status(409).json({
+                message: "Mật khẩu mới không được giống mật khẩu cũ",
                 success: false,
                 data: null
             });
         }
-        const result = await authService.changePassword(userId, oldPassword, newPassword);
         if (result.error) {
             return res.status(401).json({
                 message: result.error,
