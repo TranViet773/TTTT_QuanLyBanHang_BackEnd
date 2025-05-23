@@ -1,6 +1,7 @@
 const PurchaseInvoice = require("../models/PurchaseInvoices.model")
 const Supplier = require("../models/Supplier.model")
 const Account = require("../models/Account.model")
+const Item = require("../models/Item.model")
 
 const handleInvoiceDataForResponse = async (invoice, accountData=null) => {
 
@@ -26,9 +27,12 @@ const handleInvoiceDataForResponse = async (invoice, accountData=null) => {
             IMPORTED_BY: account.USERNAME,
             STATUS: invoice.STATUS,
             TOTAL_AMOUNT: invoice.TOTAL_AMOUNT,
+            EXTRA_FEE: invoice.EXTRA_FEE,
+            EXTRA_FEE_NOTE: invoice.EXTRA_FEE_NOTE,
             TAX: invoice.TAX,
-            TOTAL_WITH_TAX: invoice.TOTAL_WITH_TAX,
+            TOTAL_WITH_TAX_EXTRA_FEE: invoice.TOTAL_WITH_TAX,
             ITEMS: invoice.ITEMS,
+            PAYMENTED: invoice.PAYMENTED
         }
 
     } catch (error) {
@@ -36,15 +40,18 @@ const handleInvoiceDataForResponse = async (invoice, accountData=null) => {
     }
 }
 
-const getAllInvoices = async (page=1, limit = 10, search, userId) => {
+const getAllInvoices = async (query) => {
     try {
-        // ép kiểu String thành số
-        const pageNumber = Math.max(parseInt(page), 1);
-        const limitNumber = Math.max(parseInt(limit), 1);
-        // tính toán số lượng bản ghi cần bỏ qua
-        const skip = (pageNumber - 1) * limitNumber;
 
-        const matchConditions = {}
+        const {page, limit, search, userId} = query
+
+        // ép kiểu String thành số
+        const pageNumber = Math.max(parseInt(page) || 1, 1);
+        const limitNumber = Math.max(parseInt(limit) || 10, 1);
+        // tính toán số lượng bản ghi cần bỏ qua
+        const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
+
+        const matchConditions = []
 
         // tạo pipeline join bảng
         const pipeline = [
@@ -58,38 +65,54 @@ const getAllInvoices = async (page=1, limit = 10, search, userId) => {
                 
             },
             { 
-                $unwind: '$SUPPLIER',   // bung mảng thành document
+                $unwind: {
+                    path: '$SUPPLIER',
+                    preserveNullAndEmptyArrays: true        // Đặt trường thành null nếu SUPPLIER_ID = null
+                }   // bung mảng thành document
             },
              {
                 $lookup: {
                     from: 'accounts',            // Tên collection liên kết
                     localField: 'IMPORTED_BY',       // Trường chứa ObjectId
-                    foreignField: '_id',
+                    foreignField: 'USER_ID',
                     as: 'ACCOUNT'
                 },
                 
             },
             { 
-                $unwind: '$ACCOUNT',   // bung mảng thành document
+                $unwind: {
+                    path: '$ACCOUNT',
+                    preserveNullAndEmptyArrays: true
+                }   // bung mảng thành document
             },
         ]
 
         if (search?.trim()) {
-            matchConditions.$or = [
-                { INVOICE_CODE: { $regex: search, $options: 'i' } },
-                { IMPORT_DATE: { $regex: search, $options: 'i' } },
-                { 'SUPPLIER.NAME': { $regex: search, $options: 'i' } }, // Tìm theo tên supplier
-                { 'SUPPLIER.EMAIL': { $regex: search, $options: 'i' } },
-                { 'SUPPLIER.PHONE': { $regex: search, $options: 'i' } },
-            ]
+            console.log(search)
+            matchConditions.push({
+                $or: [
+                    { INVOICE_CODE: { $regex: search, $options: 'i' } },
+                    { IMPORT_DATE: { $regex: search, $options: 'i' } },
+                    { 'SUPPLIER.SUPPLIER_NAME': { $regex: search, $options: 'i' } }, // Tìm theo tên supplier
+                    { 'SUPPLIER.SUPPLIER_EMAIL': { $regex: search, $options: 'i' } },
+                    { 'SUPPLIER.SUPPLIER_PHONE': { $regex: search, $options: 'i' } },
+                    { 'ACCOUNT.USERNAME': { $regex: search, $options: 'i' } },
+                ]
+            })
         }
 
         if (userId?.trim()) {
-            matchConditions.IMPORTED_BY = userId
+            matchConditions.push({IMPORTED_BY: userId})
+            console.log("thêm user id")
         }
 
-        if (Object.keys(matchConditions).length > 0) {
-            pipeline.push({ $match: matchConditions })
+        console.log("match: ", matchConditions)
+
+        console.log("match length: ", matchConditions.length)
+
+        if (matchConditions.length > 0) {
+            pipeline.push({ $match: { $and: matchConditions } })
+            console.log(matchConditions)
         }
 
         // tạo pipeline để đếm tổng số bản ghi
@@ -110,23 +133,32 @@ const getAllInvoices = async (page=1, limit = 10, search, userId) => {
                     SUPPLIER_CONTACT_PERSON_NAME: "$SUPPLIER.SUPPLIER_CONTACT_PERSON_NAME",
                     NOTE: "$SUPPLIER.NOTE",
                 },
-                IMPORT_DATE: "$IMPORTED_DATE",
+                IMPORT_DATE: "$IMPORT_DATE",
                 IMPORTED_BY: "$ACCOUNT.USERNAME",
                 STATUS: "$STATUS",
                 TOTAL_AMOUNT: "$TOTAL_AMOUNT",
+                EXTRA_FEE: "$EXTRA_FEE",
+                EXTRA_FEE_NOTE: "$EXTRA_FEE_NOTE",
                 TAX: "$TAX",
-                TOTAL_WITH_TAX: "$TOTAL_WITH_TAX",
+                TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX",
                 ITEMS: "$ITEMS",
+                PAYMENTED: "$PAYMENTED"
             }
         })
         pipeline.push({ $sort: {IMPORTED_DATE: -1} })
         pipeline.push({ $skip: skip })
         pipeline.push({ $limit: limitNumber })
 
+        console.log(JSON.stringify(pipeline, null, 2));
+
         const [totalResult, results] = await Promise.all([
-            InvoiceModel.aggregate(totalPipeline),
-            InvoiceModel.aggregate(pipeline)
+            PurchaseInvoicesModel.aggregate(totalPipeline),
+            PurchaseInvoicesModel.aggregate(pipeline)
         ])
+
+        console.log(results)
+
+        // const results = await PurchaseInvoicesModel.aggregate(pipeline)
                         
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
@@ -140,14 +172,121 @@ const getAllInvoices = async (page=1, limit = 10, search, userId) => {
 
          
     } catch (error) {
+        console.log(error.message)
         throw new Error('Lỗi khi lấy danh sách hóa đơn');
     }
     
 }
 
 const createInvoice = async (data) => {
-    const {supplierId, importedBy, statusName, totalAmount, tax, items} = data
+    const {supplierId, importedBy, statusName, totalAmount, extraFee, extraFeeNote, tax, items, paymented} = data
+
+
+    const isImportedInvoice = supplierId ? true : false
+
+    if(!await Account.findOne({ USER_ID: importedBy })) {
+        return {error: "Người dùng không tồn tại."}
+    }
+
+    const itemCodes = items.map(item => item.ITEM_CODE)
+    console.log("Item code list: ", itemCodes)
+    const itemList = await Item.find({
+        ITEM_CODE: { $in: itemCodes }
+    })
+
+    const copyItemList = [...itemList]
+
     const now = new Date()
+
+    if (isImportedInvoice) {
+
+        let count = 0
+
+        let errorSupplier = false
+
+        items.forEach(async (addItem) => {
+            
+            if(!await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
+                errorSupplier = true
+                return
+            }
+
+            itemList.forEach(async (item) => {
+                item.ITEM_STOCKS.QUANTITY +=  addItem.QUANTITY,
+                item.ITEM_STOCKS.LAST_UPDATED = now
+                
+                try {
+                    await item.save()
+                    count++
+                } catch (error) {
+                    for(let i=0; i < count; i++) {
+                        copyItemList[0].save()
+                    }
+
+                    console.log(error.message)
+
+                    throw new Error("Lỗi khi cập nhật số lượng item.")
+                }
+
+            })              
+        })
+
+        if (errorSupplier) {
+            throw new Error("Nhà cung cấp không tồn tại.")
+        }
+    
+    } else {
+        let count = 0
+        let errorItem = null
+        let errorSupplier = false
+
+        items.forEach(async (addItem) => {
+
+            if(!await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
+                errorSupplier = true
+                return
+            }
+
+            itemList.forEach(async (item) => {
+
+                if(item.ITEM_CODE === addItem.ITEM_CODE) {
+                    item.ITEM_STOCKS.QUANTITY -=  addItem.QUANTITY,
+                    item.ITEM_STOCKS.LAST_UPDATED = now
+
+                    if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
+                        for(let i=0; i < count; i++) {
+                            await copyItemList[i].save()
+                        }
+
+                        console.log("item sold out")
+
+                        errorItem = item
+                    } 
+
+                    try {
+                        await item.save()
+                        count++
+                    } catch (error) {
+                        for(let i=0; i <= count; i++) {
+                            await copyItemList[i].save()
+                        }
+
+                        console.log(error.message)
+
+                        throw new Error("Lỗi khi cập nhật số lượng item.")
+                    }
+                }
+            })    
+        })
+
+        if (errorItem) {
+            return {error: `Item ${errorItem.ITEM_NAME} không đủ hàng tồn.`}
+        }
+
+        if (errorSupplier) {
+            throw new Error("Nhà cung cấp không tồn tại.")
+        }
+    }
 
     const invoiceData = {
         INVOICE_CODE: now.getTime(),
@@ -162,29 +301,37 @@ const createInvoice = async (data) => {
             }
         ],
         TOTAL_AMOUNT: totalAmount,
+        EXTRA_FEE: extraFee,
+        EXTRA_FEE_NOTE: extraFeeNote,
         TAX: tax,
-        TOTAL_WITH_TAX: totalAmount + totalAmount * (tax/100),
+        TOTAL_WITH_TAX_EXTRA_FEE: totalAmount + totalAmount * (tax/100) + extraFee,
         ITEMS: items,
+        PAYMENTED: paymented
     }
 
     // console.log(invoiceData)
+    let invoice = null
 
     try {
         const newInvoice = new PurchaseInvoice(invoiceData)
-        // console.log(newInvoice)
 
-        const invoice = await newInvoice.save()
-        // try {
-        //     const invoice = await newInvoice.save()
-        // }
+        invoice = await newInvoice.save()
 
-        // catch (error) {
-        //     console.log(error)
-        // }
         console.log("Lưu thành công")
 
         return await handleInvoiceDataForResponse(invoice)
+
     } catch (error) {
+
+        if (invoice) {
+            invoice.delete()
+        }
+
+        copyItemList.forEach( async (item) => {
+            await item.save()
+        });
+
+        console.log(error.message)
         throw new Error("Lỗi xảy ra khi lưu hóa đơn.")
     }
 }

@@ -2,7 +2,12 @@ const purchaseInvoiceService = require('../services/purchaseInvoice.service')
 
 const getAllInvoices = async (req, res) => {
     try {
-        const response = await purchaseInvoiceService.getAllInvoices()
+
+        const query = {...req.query}
+
+        console.log(query)
+
+        const response = await purchaseInvoiceService.getAllInvoices(query)
 
         if (response?.error) {
             return res.status(500).json({
@@ -62,7 +67,7 @@ const createInvoice = async (req, res) => {
         const response = await purchaseInvoiceService.createInvoice(data)
 
         if (response?.error) {
-            return res.status(500).json({
+            return res.status(400).json({
                 message: response.error,
                 success: false,
                 data: null

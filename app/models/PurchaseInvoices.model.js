@@ -7,11 +7,6 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         unique: true,
     },
 
-    SUPPLIER: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Supplier',
-    },
-
     IMPORT_DATE: { type: Date },
 
     IMPORTED_BY: {
@@ -21,7 +16,10 @@ const purchaseInvoicesSchema = new mongoose.Schema({
 
     STATUS: [{
         type: new mongoose.Schema({
-            STATUS_NAME: {type: String},
+            STATUS_NAME: {
+                type: String,
+                enum: ["DRAFT", "PENDING_APPROVAL","CONFIRMED","REJECTED","PAYMENTED"],
+            },
             FROM_DATE: { type: Date, },
             THRU_DATE: { type: Date, },
         }),
@@ -34,14 +32,24 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         required: true,
     },
 
-    TAX: {
+    EXTRA_FEE: {
         type: Number,
-        required: true
     },
 
-    TOTAL_WITH_TAX: {
+    EXTRA_FEE_UNIT: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
+
+    EXTRA_FEE_NOTE: {
+        type: String,
+    },
+
+    TAX: {
         type: Number,
-        required: true,
+    },
+
+    TOTAL_WITH_TAX_EXTRA_FEE: {
+        type: Number,
     },
 
     ITEMS: [
@@ -51,16 +59,27 @@ const purchaseInvoicesSchema = new mongoose.Schema({
                     type: String,
                     require: true,
                 },
+                SUPPLIER_ID: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Supplier',
+                },
                 QUANTITY: { type: Number },
-                UNIT: { type: String, },
+                UNIT: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "UnitInvoice"
+                },
                 UNIT_PRICE: { type: Number },
                 TOTAL_PRICE: { type: Number },
-
             }),
 
             _id: false,
         },
-    ]
+    ],
+
+    PAYMENTED: {
+        type: String,
+        enum: ["Tiền mặt", "Chuyển khoản"],
+    }
 })
 
 module.exports = mongoose.model('Purchase_Invoices', purchaseInvoicesSchema)

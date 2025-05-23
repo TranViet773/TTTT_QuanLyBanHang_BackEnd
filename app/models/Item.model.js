@@ -64,7 +64,7 @@ const itemSchema = new mongoose.Schema(
         ITEM_STOCKS: {
             type: new mongoose.Schema({
                 QUANTITY: { type: Number, },
-                LAST_UPDATE: { type: Date },
+                LAST_UPDATED: { type: Date },
             }),
             _id: false,
         },
