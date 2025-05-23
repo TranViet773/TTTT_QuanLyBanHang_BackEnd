@@ -12,49 +12,45 @@ const authenticateToken = async (req, res, next) => {
   const userId = req.body.userId;
   //const userId = req.user?.USER_ID || req.body.userId;
 
-
-
   if (!accessToken)
     return res.status(401).json({
       message: "Chưa đăng nhập",
       success: false,
       data: null
     });
-
-  try {
-    const isBlack = await isBlacklisted(accessToken);
-    if (isBlack) {
-      return res.status(403).json({
-        message: "Token đã bị thu hồi",
-        success: false,
-        data: null
-      });
+    
+    try {
+        const isBlack = await isBlacklisted(accessToken);
+        if (isBlack) {
+            return res.status(403).json({
+                message: "Token đã bị thu hồi",
+                success: false,
+                data: null
+            });
+        } 
+        const {privateKey, publicKey, error} = await authHelper.getSecretKey(userId, deviceId);
+        if(error) {
+            return res.status(401).json({
+                message: "Thiết bị không hợp lệ 1",
+                success: false,
+                data: null
+            });
+        }
+        const decoded = jwt.verify(accessToken, publicKey); // Hoặc dùng key từ DB/device
+        req.user = decoded; 
+        next();
+    } catch (err) {
+        return res.status(403).json({ error: "Token không hợp lệ" });
     }
-    console.log("flag 1");
-    const { privateKey, publicKey, error } = await authHelper.getSecretKey(userId, deviceId);
-    if (error) {
-      return res.status(401).json({
-        message: "Thiết bị không hợp lệ 1",
-        success: false,
-        data: null
-      });
-    }
-    console.log("accessToken: ", accessToken);
-    const decoded = jwt.verify(accessToken, publicKey); // Hoặc dùng key từ DB/device
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(403).json({ error: "Token không hợp lệ" });
-  }
 };
 
 const refreshTokenMiddleware = async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   const deviceId = req.body.deviceId;
   const userId = req.body.userId;
-
+  
   if (!refreshToken) {
-    return res.status(401).json({ message: 'Chưa đăng nhập.' });
+    return res.status(400).json({ message: 'Chưa đăng nhập.' });
   }
 
   const isBlack = await isBlacklisted(refreshToken);

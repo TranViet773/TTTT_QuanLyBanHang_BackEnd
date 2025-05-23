@@ -5,8 +5,9 @@ const authService = require("../services/auth.service");
 const authHelper = require("../helpers/auth.helper");
 const { isValidInfo } = require("../helpers/auth.helper");
 
-const { generateKeyPairSync } = require("crypto");
-const ms = require("ms");
+const { generateKeyPairSync } = require('crypto');
+const ms = require('ms');
+const { addTokenToBlacklist } = require('../utils/tokenBlacklist');
 
 // tạo cặp khóa RSA cho từng thiết bị đăng nhập
 const generateKeyPair = () => {
@@ -52,10 +53,10 @@ const handleUserDataForResponse = (user, account, device) => {
         device.PRIVATE_KEY
     );
 
-    const email = authHelper.isValidInfo(user.LIST_EMAIL);
-    const name = authHelper.isValidInfo(user.LIST_NAME);
-    const address = authHelper.isValidInfo(user.LIST_ADDRESS);
-    const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER);
+    const email = authHelper.isValidInfo(user.LIST_EMAIL)
+    const name = authHelper.isValidInfo(user.LIST_NAME)
+    const address = authHelper.isValidInfo(user.LIST_ADDRESS)
+    const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER)
 
     return {
         accessToken,
@@ -73,13 +74,13 @@ const handleUserDataForResponse = (user, account, device) => {
             BIRTH_DATE: user.BIRTH_DATE,
             AVATAR_IMG_URL: user.AVATAR_IMG_URL,
             ADDRESS: {
-                COUNTRY: address.COUNTRY,
-                CITY: address.CITY,
-                DISTRICT: address.DISTRICT,
-                WARD: address.WARD,
-                ADDRESS_1: address.ADDRESS_1,
-                ADDRESS_2: address.ADDRESS_2,
-                STATE: address.STATE,
+                COUNTRY: address?.COUNTRY,
+                CITY: address?.CITY,
+                DISTRICT: address?.DISTRICT,
+                WARD: address?.WARD,
+                ADDRESS_1: address?.ADDRESS_1,
+                ADDRESS_2: address?.ADDRESS_2,
+                STATE: address?.STATE,
             },
             ROLE: {
                 IS_ADMIN: user.ROLE.IS_ADMIN,
@@ -94,19 +95,17 @@ const handleUserDataForResponse = (user, account, device) => {
                 COUNTRY_NAME: phoneNumber.COUNTRY_NAME,
                 AREA_CODE: phoneNumber.AREA_CODE,
                 PHONE_NUMBER: phoneNumber.PHONE_NUMBER,
-                FULL_PHONE_NUMBER: phoneNumber.FULL_PHONE_NUMBER,
+                FULL_PHONE_NUMBER: phoneNumber.FULL_PHONE_NUMBER
             },
             ACCOUNT_DEVICE: {
                 DEVICE_ID: device.ID_DEVICE,
                 DEVICE_NAME: device.NAME_DEVICE || "",
                 LAST_TIME_LOGIN: device.LAST_TIME_LOGIN,
             },
-            ACCESS_TOKEN_EXPIRY: Math.floor(
-                (Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000
-            ),
-        },
-    };
-};
+            ACCESS_TOKEN_EXPIRY: Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000),
+        }
+    }
+}
 
 const handleRegistration = async (data) => {
     const existingUser =
@@ -438,24 +437,16 @@ const login = async (data) => {
     }
 };
 
-const handleRefreshToken = async (userData) => {
+const handleRefreshToken = async (userId, deviceId) => {
     try {
-        console.log("userData: ", userData);
-        const { privateKey, error } = await authHelper.getSecretKey(
-            userData.USER_ID,
-            userData.DEVICE_ID
-        );
-        console.log("error: ", error);
+        console.log("userData: ", userData)
+        const { privateKey, error } = await authHelper.getSecretKey(userData.USER_ID, userData.DEVICE_ID);
+        console.log("error: ", error)
         if (error) {
             return { error: "Thiết bị không hợp lệ 3" };
         }
-        const newAccessToken = authService.generateAccessToken(
-            userData,
-            privateKey
-        );
-        const expToken = Math.floor(
-            (Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000
-        ); //timpestamp hết hạn
+        const newAccessToken = authService.generateAccessToken(userData, privateKey);
+        const expToken = Math.floor((Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)) / 1000); //timpestamp hết hạn
         return { newAccessToken, accessTokenExp: expToken };
     } catch (error) {
         console.error("Lỗi khi làm mới token:", error);
@@ -472,12 +463,12 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
         if (error) {
             return { error: "Thiết bị không hợp lệ 2" };
         }
-        if (refreshToken) {
-            await addToBlacklist(refreshToken, publicKey);
+         if (refreshToken) {
+            await addTokenToBlacklist(refreshToken, publicKey);
         }
 
         if (accessToken) {
-            await addToBlacklist(accessToken, publicKey);
+            await addTokenToBlacklist(accessToken, publicKey);
         }
     } catch (error) {
         console.error("Lỗi khi đăng xuất:", error);
@@ -502,8 +493,8 @@ const handleForgotPassword = async (data) => {
         };
     }
 
-    await authService.sendVerificationEmail(data);
-};
+    await authService.sendVerificationEmail(data)
+}
 const updateUser = async (userId, data) => {
     const user = await User.findById(userId);
     if (!user) {
