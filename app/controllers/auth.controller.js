@@ -142,7 +142,9 @@ const getCurrentUser = async (req, res) => {
 
 const refreshToken = async (req, res) => {
     try{
-        const response = await userService.handleRefreshToken(req.user);
+        const userId = req.body.userId;
+        const deviceId = req.body.deviceId;
+        const response = await userService.handleRefreshToken(userId, deviceId);
         // console.log("Response: ", response.newAccessToken)
         if(!response.error) {
             res.cookie('accessToken', response.newAccessToken, {
@@ -157,7 +159,7 @@ const refreshToken = async (req, res) => {
                 data: response,
             }); 
         }else{
-            return res.status(401).json({
+            return res.status(400).json({
                 message: response.error,
                 success: false,
                 data: null,
@@ -198,15 +200,16 @@ const changePassword = async (req, res)=>{
 
     try {
         const userId = req.user.USER_ID;
-        const {oldPassword, newPassword, confirmNewPassword} = req.body;
-        if(newPassword !== confirmNewPassword) {
-            return res.status(401).json({
-                message: "Mật khẩu mới không khớp",
+        const {oldPassword, newPassword} = req.body;
+       
+        const result = await authService.changePassword(userId, oldPassword, newPassword);
+        if (oldPassword === newPassword) {
+            return res.status(409).json({
+                message: "Mật khẩu mới không được giống mật khẩu cũ",
                 success: false,
                 data: null
             });
         }
-        const result = await authService.changePassword(userId, oldPassword, newPassword);
         if (result.error) {
             return res.status(401).json({
                 message: result.error,
@@ -215,7 +218,7 @@ const changePassword = async (req, res)=>{
             });
         }
         return res.status(200).json({
-            message: "Đổi mật khẩu thành công hehehe",
+            message: "Đổi mật khẩu thành công",
             success: true,
             data: null
         });

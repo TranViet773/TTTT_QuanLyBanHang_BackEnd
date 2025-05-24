@@ -1,4 +1,5 @@
 const itemService = require('../services/item.service');
+const Item = require('../models/Item.model');
 
 const getAllItems = async (req, res) => {
     try {

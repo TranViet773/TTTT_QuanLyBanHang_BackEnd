@@ -11,8 +11,6 @@ const authenticateToken = async (req, res, next) => {
   const deviceId = req.headers['device_id'];
   const userId = req.headers['user_id'];
 
-
-
   if (!accessToken)
     return res.status(401).json({
       message: "Chưa đăng nhập",
@@ -49,7 +47,7 @@ const refreshTokenMiddleware = async (req, res, next) => {
   const refreshToken = req.cookies.refreshToken;
   const deviceId = req.body.deviceId;
   const userId = req.body.userId;
-
+  
   if (!refreshToken) {
     return res.status(400).json({ message: 'Chưa đăng nhập.' });
   }
