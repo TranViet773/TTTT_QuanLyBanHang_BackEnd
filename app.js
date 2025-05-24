@@ -14,6 +14,7 @@ const userRoute = require('./app/routes/user.route');
 const supplierRoute = require('./app/routes/supplier.route');
 const itemTypeRoute = require('./app/routes/itemType.route');
 const itemRoute = require('./app/routes/item.route');
+const unitItemRoute = require('./app/routes/unitItem.route');
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -28,6 +29,7 @@ app.use('/api/user', userRoute);
 app.use('/api/supplier', supplierRoute);
 app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
+app.use('/api/unit-items', unitItemRoute);
 
 app.get('/', (request, respond) => {
   respond.status(200).json({

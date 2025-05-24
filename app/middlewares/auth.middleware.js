@@ -8,9 +8,8 @@ const { isBlacklisted } = require('../utils/tokenBlacklist');
 const authenticateToken = async (req, res, next) => {
   const accessToken = req.cookies.accessToken;
   const refreshToken = req.cookies.refreshToken;
-  const deviceId = req.body.deviceId;
-  const userId = req.body.userId;
-  //const userId = req.user?.USER_ID || req.body.userId;
+  const deviceId = req.headers['device_id'];
+  const userId = req.headers['user_id'];
 
 
 
@@ -52,7 +51,7 @@ const refreshTokenMiddleware = async (req, res, next) => {
   const userId = req.body.userId;
 
   if (!refreshToken) {
-    return res.status(401).json({ message: 'Chưa đăng nhập.' });
+    return res.status(400).json({ message: 'Chưa đăng nhập.' });
   }
 
   const isBlack = await isBlacklisted(refreshToken);

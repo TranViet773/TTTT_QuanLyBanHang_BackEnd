@@ -308,7 +308,7 @@ const loginDevice = async (accountDevice, deviceId = null, deviceName, deviceTyp
     }
 
     return newDevice
-}
+};
 
 const login = async (data) => {
     const {username, email, password, deviceId, deviceName, deviceType} = data 
@@ -438,7 +438,7 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
     } catch (error) {
         console.error('Lỗi khi đăng xuất:', error);
     }
-}
+};
 
 const handleForgotPassword = async (data) => {
 
@@ -457,7 +457,7 @@ const handleForgotPassword = async (data) => {
     }
 
     await authService.sendVerificationEmail(data)
-}
+};
 
 const updateUser = async (userId, data) => {
     const user = await User.findById(userId);
@@ -550,4 +550,4 @@ module.exports = {
     handleLogout,
     updateUser,
     handleForgotPassword
-}
+};
