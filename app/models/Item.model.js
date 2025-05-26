@@ -97,6 +97,15 @@ const itemSchema = new mongoose.Schema(
                 ref: 'Vouchers',
             }
         ],
+
+        LIST_IMAGE:[
+            {
+                type: new mongoose.Schema({
+                    URL: { type: String, required: true }
+                }),
+                _id: false,
+            }
+        ]
     },
     { 
         timestamps: true 
