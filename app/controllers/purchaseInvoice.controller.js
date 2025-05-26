@@ -88,8 +88,35 @@ const createInvoice = async (req, res) => {
     }
 }
 
+const updateInvoiceStatus = async (req, res) => {
+    try {
+        const response = await purchaseInvoiceService.updateInvoiceStatus(req.body)
+
+        if (response?.error) {
+            return res.status(400).json({
+                message: response.error,
+                success: false,
+                data: null
+            })
+        }
+
+        return res.status(200).json({
+            message: "Cập nhật trạng thái hóa đơn thành công.",
+            success: true,
+            data: response
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
+    updateInvoiceStatus,
 }

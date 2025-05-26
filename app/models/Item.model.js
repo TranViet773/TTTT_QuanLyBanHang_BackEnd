@@ -63,7 +63,10 @@ const itemSchema = new mongoose.Schema(
 
         ITEM_STOCKS: {
             type: new mongoose.Schema({
-                QUANTITY: { type: Number, },
+                QUANTITY: { 
+                    type: Number, 
+                    min: [0, "Số lượng không được nhỏ hơn 0."]
+                },
                 LAST_UPDATED: { type: Date },
             }),
             _id: false,
@@ -73,7 +76,10 @@ const itemSchema = new mongoose.Schema(
             {
                 type: new mongoose.Schema({
                     ITEM_CODE: { type: String },
-                    QUANTITY: { type: Number },
+                    QUANTITY: { 
+                        type: Number,
+                        min: [1, "Số lượng phải ít nhất là 1"]
+                    },
                     UNIT: { type: String },
                     FROM_DATE: { type: Date },
                     THRU_DATE: { type: Date },
@@ -81,9 +87,6 @@ const itemSchema = new mongoose.Schema(
             }
         ]
         
-    },
-    { 
-        timestamp: true 
     }
 )
 

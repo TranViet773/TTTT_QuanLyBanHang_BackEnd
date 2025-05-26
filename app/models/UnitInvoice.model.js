@@ -3,6 +3,7 @@ const mongoose = require("mongoose")
 const unitInvoice = new mongoose.Schema({
     UNIT_NAME: {
         type: String,
+        require: true,
     },
     UNIT_NAME_EN: {
         type: String,

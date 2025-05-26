@@ -18,7 +18,7 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         type: new mongoose.Schema({
             STATUS_NAME: {
                 type: String,
-                enum: ["DRAFT", "PENDING_APPROVAL","CONFIRMED","REJECTED","PAYMENTED"],
+                enum: ["DRAFT", "PENDING_APPROVAL", "CONFIRMED", "REJECTED", "PAYMENTED"],
             },
             FROM_DATE: { type: Date, },
             THRU_DATE: { type: Date, },
@@ -30,10 +30,12 @@ const purchaseInvoicesSchema = new mongoose.Schema({
     TOTAL_AMOUNT: {
         type: Number,
         required: true,
+        min: [0, "Số tiền (total amount) không thể là số âm."]
     },
 
     EXTRA_FEE: {
         type: Number,
+        min: [0, "Số tiền (extra fee) không thể là số âm."]
     },
 
     EXTRA_FEE_UNIT: {
@@ -50,6 +52,7 @@ const purchaseInvoicesSchema = new mongoose.Schema({
 
     TOTAL_WITH_TAX_EXTRA_FEE: {
         type: Number,
+        min: [0, "Số tiền (extra fee) không thể là số âm."] 
     },
 
     ITEMS: [
@@ -63,13 +66,22 @@ const purchaseInvoicesSchema = new mongoose.Schema({
                     type: mongoose.Schema.Types.ObjectId,
                     ref: 'Supplier',
                 },
-                QUANTITY: { type: Number },
+                QUANTITY: { 
+                    type: Number,
+                    min: [1, "Số lượng phải ít nhất là 1"]
+                },
                 UNIT: {
                     type: mongoose.Schema.Types.ObjectId,
                     ref: "UnitInvoice"
                 },
-                UNIT_PRICE: { type: Number },
-                TOTAL_PRICE: { type: Number },
+                UNIT_PRICE: { 
+                    type: Number,
+                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                 },
+                TOTAL_PRICE: { 
+                    type: Number,
+                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                },
             }),
 
             _id: false,

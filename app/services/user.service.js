@@ -195,7 +195,7 @@ const handleCreateUser = async (data) => {
                 FIRST_NAME: firstName,
                 MIDDLE_NAME: middleName,
                 FULL_NAME: `${lastName} ${middleName} ${firstName}`,
-                PHONE_NUMBER: phoneNumber,
+                PHONE_NUMBER: fullPhoneNumber,
                 ADDRESS_1: address1,
                 ADDRESS_2: address2,
                 EMAIL: email,

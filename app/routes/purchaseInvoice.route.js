@@ -5,6 +5,7 @@ const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.
 
 // Post 
 router.post('/', authenticateToken, purchaseInvoiceController.createInvoice)
+router.put('/', authenticateToken, purchaseInvoiceController.updateInvoiceStatus)
 router.get('/', authenticateToken, purchaseInvoiceController.getAllInvoices)
 router.get('/:invoiceCode', authenticateToken, purchaseInvoiceController.getInvoiceByCode)
 

@@ -172,8 +172,8 @@ const userSchema = new mongoose.Schema(
                     STATE: { type: String, },
                     COUNTRY: { type: String, },
                     RELATIONSHIP: { type: String, },
-                    FROM_DATE: { type: String, },
-                    THRU_DATE: { type: String, },
+                    FROM_DATE: { type: Date, },
+                    THRU_DATE: { type: Date, },
                 }),
                 _id: false,     
             }
