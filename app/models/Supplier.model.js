@@ -8,7 +8,7 @@ const supplierSchema = new mongoose.Schema({
 
     SUPPLIER_PHONE: {
         type: String,
-        match: [/^\d+$/, 'Chỉ chứa ký tự số']
+        match: [/^\+\d[\d\s]*$/, 'Số điện thoại phải bắt đầu với dấu "+" và chỉ chứa số'],
     },
 
     SUPPLIER_ADDRESS: {
@@ -36,6 +36,7 @@ const supplierSchema = new mongoose.Schema({
     IS_ACTIVE: {
         type: Boolean,
         required: true,
+        default: true,
     }
 })
 

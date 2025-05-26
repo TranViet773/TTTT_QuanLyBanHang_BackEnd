@@ -25,13 +25,15 @@ const itemSchema = new mongoose.Schema(
         },
 
         UNIT:{
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Unit_Item',
             required: true,
         },
         
         PRICE:[{
             type: new mongoose.Schema({
                 PRICE_AMOUNT: {type: Number,},
+                UNIT: {type: mongoose.Schema.Types.ObjectId}, //UNIT_INVOICE
                 FROM_DATE:{type: Date},
                 THRU_DATE:{type: Date},
             }),
@@ -81,9 +83,20 @@ const itemSchema = new mongoose.Schema(
                         min: [1, "Số lượng phải ít nhất là 1"]
                     },
                     UNIT: { type: String },
+                    ITEM_CODE: { 
+                        type: String, 
+                        required: true 
+                    },
+                    QUANTITY: { type: Number },
+                    UNIT:{
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: 'Unit_Item',
+                        required: true,
+                    },
                     FROM_DATE: { type: Date },
                     THRU_DATE: { type: Date },
                 }),
+                _id: false,
             }
         ]
         
