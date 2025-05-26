@@ -12,6 +12,7 @@ router.get('/current-user', authenticateToken, checkRoleMiddleware(['customer'])
 router.post('/refresh-token', refreshTokenMiddleware, authController.refreshToken);
 router.post('/logout', authenticateToken, authController.logout);
 router.put('/change-password', authenticateToken, authController.changePassword);
-router.post('/forget-password', authController.forgetPassword)
+router.post('/forget-password', authController.sendForgetPasswordEmail)
+router.post('/reset-password', authController.verifyAndResetPassword)
 
 module.exports = router;

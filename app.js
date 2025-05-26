@@ -17,6 +17,8 @@ const itemRoute = require('./app/routes/item.route');
 const unitItemRoute = require('./app/routes/unitItem.route');
 const uploadRoute = require('./app/routes/upload.route');
 
+const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
+const unitInvouceRoute = require('./app/routes/unitInvoice.route')
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -35,6 +37,8 @@ app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
 app.use('/api/unit-items', unitItemRoute);
 app.use('/api/upload', uploadRoute);
+app.use('/api/purchase-invoices', purchaseInvoiceRoute);
+app.use('/api/unit-invoices', unitInvouceRoute)
 
 app.get('/', (request, respond) => {
   respond.status(200).json({

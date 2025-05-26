@@ -65,7 +65,10 @@ const itemSchema = new mongoose.Schema(
 
         ITEM_STOCKS: {
             type: new mongoose.Schema({
-                QUANTITY: { type: Number, },
+                QUANTITY: { 
+                    type: Number, 
+                    min: [0, "Số lượng không được nhỏ hơn 0."]
+                },
                 LAST_UPDATED: { type: Date },
             }),
             _id: false,
@@ -74,6 +77,12 @@ const itemSchema = new mongoose.Schema(
         BOM_MATERIALS: [
             {
                 type: new mongoose.Schema({
+                    ITEM_CODE: { type: String },
+                    QUANTITY: { 
+                        type: Number,
+                        min: [1, "Số lượng phải ít nhất là 1"]
+                    },
+                    UNIT: { type: String },
                     ITEM_CODE: { 
                         type: String, 
                         required: true 
@@ -89,26 +98,8 @@ const itemSchema = new mongoose.Schema(
                 }),
                 _id: false,
             }
-        ],
-
-        LIST_VOUCHER_ACTIVE: [
-            {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: 'Vouchers',
-            }
-        ],
-
-        LIST_IMAGE:[
-            {
-                type: new mongoose.Schema({
-                    URL: { type: String, required: true }
-                }),
-                _id: false,
-            }
         ]
-    },
-    { 
-        timestamps: true 
+        
     }
 )
 
