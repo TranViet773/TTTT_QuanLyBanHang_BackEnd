@@ -98,8 +98,23 @@ const itemSchema = new mongoose.Schema(
                 }),
                 _id: false,
             }
+        ],
+
+        LIST_VOUCHER_ACTIVE: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Vouchers',
+            }
+        ],
+
+        LIST_IMAGE:[
+            {
+                type: new mongoose.Schema({
+                    URL: { type: String, required: true }
+                }),
+                _id: false,
+            }
         ]
-        
     }
 )
 

@@ -90,7 +90,10 @@ const createInvoice = async (req, res) => {
 
 const updateInvoiceStatus = async (req, res) => {
     try {
-        const response = await purchaseInvoiceService.updateInvoiceStatus(req.body)
+
+        const data = req.body
+        data.invoiceCode = req.params.invoiceCode
+        const response = await purchaseInvoiceService.updateInvoiceStatus(data)
 
         if (response?.error) {
             return res.status(400).json({
@@ -105,6 +108,7 @@ const updateInvoiceStatus = async (req, res) => {
             success: true,
             data: response
         })
+        
     } catch (error) {
         return res.status(500).json({
             message: error.message,
