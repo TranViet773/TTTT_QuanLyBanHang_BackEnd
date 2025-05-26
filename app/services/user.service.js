@@ -601,6 +601,36 @@ const updateUser = async (userId, data) => {
       THRU_DATE: null,
     });
   }
+  if (data.contact){
+    const now = new Date();
+    // tìm kiếm liên hệ còn hiệu lực
+    const currentContact = user.LIST_CONTACT.find((contact) =>
+      isValidInfo([contact])
+    );
+    // nếu có thì cập nhật nó thành ngày kết thúc
+    if (currentContact) {
+      currentContact.THRU_DATE = now;
+    }
+    // tạo bản ghi mới cho liên hệ
+    user.LIST_CONTACT.push({
+      LAST_NAME: data.contact.lastName || "",
+      FIRST_NAME: data.contact.firstName || "",
+      MIDDLE_NAME: data.contact.middleName || "",
+      FULL_NAME: `${data.contact.lastName || ""} ${data.contact.middleName || ""} ${data.contact.firstName || ""}`.trim(),
+      PHONE_NUMBER: data.contact.phoneNumber || "",
+      ADDRESS_1: data.contact.address1 || "",
+      ADDRESS_2: data.contact.address2 || "",
+      EMAIL: data.contact.email || "",
+      WARD: data.contact.ward || "",
+      DISTRICT: data.contact.district || "",
+      CITY: data.contact.city || "",
+      STATE: data.contact.state || "",
+      COUNTRY: data.contact.country || "",
+      RELATIONSHIP: data.contact.relationship || "",
+      FROM_DATE: now,
+      THRU_DATE: null,
+    });
+  }
   await user.save();
   return {
     success: true,
