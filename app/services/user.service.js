@@ -114,7 +114,7 @@ const handleUserDataForResponse = (user, account, device) => {
 
 const handleRegistration = async (data) => {
   const existingUser =
-    (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
+    (await User.findOne({ EMAIL: data.email })) ||
     (await Account.findOne({ USERNAME: data.username }));
   if (existingUser) return { error: "Email đã được đăng ký!" };
   await authService.sendVerificationEmail(data);
@@ -550,11 +550,6 @@ const resetPassword = async (data) => {
 
 const updateUser = async (userId, data, deviceId) => {
   const user = await User.findById(userId);
-
-  const backupContact = authHelper.isValidInfo(user.LIST_CONTACT);
-
-  const now = new Date();
-
   if (!user) {
     return { error: "Người dùng không tồn tại" };
   }
@@ -564,7 +559,7 @@ const updateUser = async (userId, data, deviceId) => {
 
     const firstName = data.firstName?.trim() || "";
     const middleName = data.middleName?.trim() || "";
-    const fullName = `${lastName} ${middleName} ${firstName}`.trim();
+    const fullName = `${lastName} ${firstName}`.trim();
 
     if (!lastName || !firstName) {
       return { error: "Vui lòng nhập đầy đủ họ và tên." };
