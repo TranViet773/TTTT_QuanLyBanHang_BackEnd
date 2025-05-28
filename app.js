@@ -15,8 +15,9 @@ const supplierRoute = require('./app/routes/supplier.route');
 const itemTypeRoute = require('./app/routes/itemType.route');
 const itemRoute = require('./app/routes/item.route');
 const unitItemRoute = require('./app/routes/unitItem.route');
+const unitInvoiceRoute = require('./app/routes/unitInvoice.route');
 const uploadRoute = require('./app/routes/upload.route');
-
+const accountRoute = require('./app/routes/account.route');
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -35,6 +36,9 @@ app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
 app.use('/api/unit-items', unitItemRoute);
 app.use('/api/upload', uploadRoute);
+app.use('/api/unit-invoices', unitInvoiceRoute);
+app.use('/api/account', accountRoute);
+
 
 app.get('/', (request, respond) => {
   respond.status(200).json({

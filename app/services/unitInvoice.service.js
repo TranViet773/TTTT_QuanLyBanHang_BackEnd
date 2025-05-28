@@ -53,9 +53,19 @@ const deleteUnitInvoice = async (id) => {
     }
 }
 
+const getUnitInvoiceById = async (id) => {
+    try {
+        return await UnitInvoice.findById(id)
+    } catch (error) {
+        console.log(error.message)
+        throw new Error("Lỗi khi lấy thông tin đơn vị tiền tệ.")
+    }
+}
+
 module.exports = {
     createUnitInvoice,
     getAllUnitInvoice,
     updateUnitInvoice,
     deleteUnitInvoice,
+    getUnitInvoiceById
 }

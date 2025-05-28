@@ -77,6 +77,32 @@ const deleteUnitInvoice = async(req, res) => {
             data: null
         })
     }
+};
+
+const getUnitInvoiceById = async (req, res) => {
+    try {
+        const response = await unitInvoiceService.getUnitInvoiceById(req.params.id)
+
+        if(!response) {
+            return res.status(404).json({
+                message: "Không tìm thấy đơn vị tiền tệ.",
+                success: false,
+                data: null
+            })
+        }
+
+        return res.status(200).json({
+            message: "Thông tin đơn vị tiền tệ.",
+            success: true,
+            data: response
+        })
+    } catch (error) {
+        return res.status(500).json({
+            message: error.message,
+            success: false,
+            data: null
+        })
+    }
 }
 
 module.exports = {
@@ -84,4 +110,5 @@ module.exports = {
     getAllUnitInvoice,
     updateUnitInvoice,
     deleteUnitInvoice,
+    getUnitInvoiceById
 }

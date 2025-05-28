@@ -43,9 +43,8 @@ const updateUser = async (req, res) => {
 
 const getUsers = async (req, res) => {
     try {
-
         const { page, limit, role } = req.query;
-        const result = await userService.getUserByID({
+        const result = await userService.getUsers({
           page,
           limit,
           role
@@ -66,13 +65,63 @@ const getUsers = async (req, res) => {
     })
 }
 
+};
+
+const updateRoleForUser = async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const result = await userService.handleUpdateRoleForUser(userId, req.body);
+        if (result.error) {
+            return res.status(401).json({
+                message: result.error,
+                success: false,
+                data: null
+            });
+        }
+        res.status(200).json({
+            message: "Cập nhật quyền người dùng thành công",
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error("Lỗi cập nhật quyền người dùng:", error);
+        res.status(500).json({
+            message: "Lỗi cập nhật quyền người dùng",
+            success: false,
+            data: null
+        });
+    }
 }
 
-
-
-
+const getUserById = async (req, res) => {
+    try{
+        const userId = req.params.userId;
+        var result = await userService.handleGetUserById(userId);
+        if (result.error) {
+            return res.status(401).json({
+                message: result.error,
+                success: false,
+                data: null
+            });
+        }
+        res.status(200).json({
+            message: "Lấy thông tin người dùng thành công!",
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        console.error("Lấy thông tin người dùng thất bại:", error);
+        res.status(500).json({
+            message: "Lấy thông tin người dùng thất bại!",
+            success: false,
+            data: null
+        });
+    }
+};
 
 module.exports = {
     updateUser,
-    getUsers
+    getUsers,
+    updateRoleForUser,
+    getUserById
 };

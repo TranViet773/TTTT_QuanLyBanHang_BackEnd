@@ -18,6 +18,10 @@ const itemSchema = new mongoose.Schema(
         ITEM_NAME_EN: {
             type: String,
         },
+
+        AVATAR_IMAGE_URL: {
+            type: String
+        },
         
         ITEM_TYPE: {
             type: mongoose.Schema.Types.ObjectId,
@@ -106,9 +110,6 @@ const itemSchema = new mongoose.Schema(
                 _id: false,
             }
         ]
-    },
-    { 
-        timestamps: true 
     }
 )
 

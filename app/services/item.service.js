@@ -226,6 +226,8 @@ const createItem = async (itemData) => {
         isActive = true,
         userId,
         stock,
+        avatarImageUrl,
+        listImage,
         bomMaterials
     } = itemData;
 
@@ -251,6 +253,7 @@ const createItem = async (itemData) => {
         ITEM_NAME: itemName,
         ITEM_NAME_EN: itemNameEn,
         ITEM_TYPE: existingItemType._id,
+        AVATAR_IMAGE_URL: avatarImageUrl || null,
         UNIT: unitId,
         PRICE: [
             {
@@ -269,6 +272,7 @@ const createItem = async (itemData) => {
             QUANTITY: stock || 0,
             LAST_UPDATED: new Date(),
         },
+        LIST_IMAGE: listImage,
         BOM_MATERIALS: bomMaterials || null
     };
 
@@ -291,7 +295,8 @@ const updateItem = async (id, itemData) => {
             itemNameEn: 'ITEM_NAME_EN',
             itemTypeId: 'ITEM_TYPE',
             unitId: 'UNIT',
-            description: 'DESCRIPTION'
+            description: 'DESCRIPTION',
+            avatarImageUrl: 'AVATAR_IMAGE_URL',
         };
 
         const updateData = {};
@@ -492,6 +497,25 @@ const getAllByItemTypeId = async (itemTypeId) => {
     }
 };
 
+const updateImagesForItem = async (id, images) => {
+    try {
+        const updatedItem = await Item.findByIdAndUpdate(
+            id,
+            { 
+                LIST_IMAGE: images, 
+                UPDATED_AT: new Date() 
+            },
+            { new: true }
+        );
+        if (!updatedItem) {
+            return { error: "Item not found" };
+        }
+        return updatedItem;
+    } catch (error) {
+        return { error: "Error updating item images" };
+    }
+};
+
 module.exports = {
     getAllItems,
     getItemByCode,
@@ -504,5 +528,6 @@ module.exports = {
     updateItemPrice,
     addBOMMaterialToItem,
     updateBOMMaterialInItem,
-    removeBOMMaterialFromItem
+    removeBOMMaterialFromItem,
+    updateImagesForItem
 };
