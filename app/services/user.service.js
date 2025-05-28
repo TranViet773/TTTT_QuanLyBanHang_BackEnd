@@ -812,7 +812,7 @@ const updateUser = async (userId, data, deviceId) => {
 };
 
 // lấy thông tin người dùng theo id
-const getUserByID = async ({ page = 1, limit = 10, role }) => {
+const getUsers = async ({ page = 1, limit = 10, role }) => {
   try {
     // ép kiểu String thành số
     const pageNumber = Math.max(parseInt(page), 1);
@@ -848,6 +848,86 @@ const getUserByID = async ({ page = 1, limit = 10, role }) => {
   }
 };
 
+const handleUpdateRoleForUser = async (userId, roleData) => {
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return { error: "Người dùng không tồn tại" };
+    }
+
+    // Cập nhật vai trò
+    user.ROLE.IS_MANAGER = roleData.isManager || false;
+    user.ROLE.IS_SERVICE_STAFF = roleData.isServiceStaff || false;
+    user.ROLE.IS_CUSTOMER = roleData.isCustomer || false;
+
+    await user.save();
+
+    return user;
+  } catch (error) {
+    console.error("Lỗi khi cập nhật vai trò:", error);
+    return { error: "Lỗi khi cập nhật vai trò" };
+  }
+}
+
+const handleGetUserById = async (userId) => {
+    try{
+      const user = await User.findById(userId);
+      if(!user){
+        return {error: "Không tìm thấy người dùng!"};
+      }
+      const account = await Account.findOne({USER_ID: userId});
+      if(!account){
+        return {error: "Không tìm thấy tài khoản!"};
+      }
+        const email = authHelper.isValidInfo(user.LIST_EMAIL);
+        const name = authHelper.isValidInfo(user.LIST_NAME);
+        const address = authHelper.isValidInfo(user.LIST_ADDRESS);
+        const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER);
+      return {
+        user_data: {
+          USER_ID: user._id,
+          USERNAME: account.USERNAME,
+          NAME: {
+            LAST_NAME: name.LAST_NAME,
+            FIRST_NAME: name.FIRST_NAME,
+            MIDDLE_NAME: name.MIDDLE_NAME,
+            FULL_NAME: name.FULL_NAME,
+          },
+          CURRENT_GENDER: user.CURRENT_GENDER,
+          BIRTH_DATE: user.BIRTH_DATE,
+          AVATAR_IMG_URL: user.AVATAR_IMG_URL,
+          ADDRESS: {
+            COUNTRY: address?.COUNTRY,
+            CITY: address?.CITY,
+            DISTRICT: address?.DISTRICT,
+            WARD: address?.WARD,
+            ADDRESS_1: address?.ADDRESS_1,
+            ADDRESS_2: address?.ADDRESS_2,
+            STATE: address?.STATE,
+          },
+          ROLE: {
+            IS_ADMIN: user.ROLE.IS_ADMIN,
+            IS_MANAGER: user.ROLE.IS_MANAGER,
+            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+            IS_ACTIVE: account.IS_ACTIVE,
+          },
+          EMAIL: email.EMAIL,
+          PHONE_NUMBER: {
+            COUNTRY_CODE: phoneNumber?.COUNTRY_CODE,
+            COUNTRY_NAME: phoneNumber?.COUNTRY_NAME,
+            AREA_CODE: phoneNumber?.AREA_CODE,
+            PHONE_NUMBER: phoneNumber?.PHONE_NUMBER,
+            FULL_PHONE_NUMBER: phoneNumber?.FULL_PHONE_NUMBER,
+          }
+        },
+      };
+    }catch(e){
+      console.log(e)
+      return {error: "Lỗi khi lấy thông tin người dùng!", e};
+    }
+}
+
 module.exports = {
   handleCreateUser,
   handleRegistration,
@@ -856,6 +936,8 @@ module.exports = {
   handleLogout,
   updateUser,
   handleForgotPassword,
-  getUserByID,
+  getUsers,
+  handleUpdateRoleForUser,
+  handleGetUserById,
   resetPassword,
 };

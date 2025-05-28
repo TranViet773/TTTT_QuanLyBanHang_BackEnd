@@ -16,5 +16,5 @@ router.post('/bom-materials/:id', authenticateMiddleware.authenticateToken, item
 router.put('/bom-materials/:id', authenticateMiddleware.authenticateToken, itemController.updateBOMMaterialInItem);
 router.delete('/bom-materials/:id', authenticateMiddleware.authenticateToken, itemController.deleteBOMMaterialInItem);
 router.put('/price/:id', authenticateMiddleware.authenticateToken, itemController.updateItemPrice);
-
+router.put('/images/:id', authenticateMiddleware.authenticateToken, itemController.updateListImageForItem);
 module.exports = router;
