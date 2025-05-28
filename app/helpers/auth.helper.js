@@ -1,3 +1,4 @@
+const { default: mongoose } = require('mongoose');
 const AccountDeviceModel = require('../models/AccountDevice.model');
 const UserModel = require('../models/User.model');
 const isValidEmail = (user, email) => {
@@ -29,8 +30,9 @@ const getSecretKey = async (userId, deviceId) => {
         return {error: "Thiết bị không hợp lệ 0"};
     }
     
-    const device = accountDevice.LIST_DEVICE_OF_ACCOUNT.find(device => device.ID_DEVICE === deviceId);
-    if (!device) {
+   const device = accountDevice.LIST_DEVICE_OF_ACCOUNT.find(device => device.ID_DEVICE === deviceId);
+
+  if (!device) {
         return {error: "Thiết bị không hợp lệ 2"};
     }
 
