@@ -287,6 +287,31 @@ const deleteBOMMaterialInItem = async (req, res) => {
     }
 };
 
+const updateListImageForItem = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const updatedItem = await itemService.updateImagesForItem(id, req.body);
+        if (updatedItem.error) {
+            return res.status(404).json({
+                success: false,
+                message: updatedItem.error,
+                data: updatedItem.error,
+            });
+        }
+        res.status(200).json({
+            success: true,
+            message: "List image updated successfully",
+            data: updatedItem,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error updating list image",
+            data: error.message,
+        });
+    }
+}
+
 
 
 module.exports = {
@@ -300,5 +325,6 @@ module.exports = {
     updateItemPrice,
     addBOMMaterialToItem,
     updateBOMMaterialInItem,
-    deleteBOMMaterialInItem
+    deleteBOMMaterialInItem,
+    updateListImageForItem
 };  
