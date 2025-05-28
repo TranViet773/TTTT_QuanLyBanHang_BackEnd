@@ -114,7 +114,7 @@ const handleUserDataForResponse = (user, account, device) => {
 
 const handleRegistration = async (data) => {
   const existingUser =
-    (await User.findOne({ EMAIL: data.email })) ||
+    (await User.findOne({ 'LIST_EMAIL.EMAIL': data.email })) ||
     (await Account.findOne({ USERNAME: data.username }));
   if (existingUser) return { error: "Email đã được đăng ký!" };
   await authService.sendVerificationEmail(data);
