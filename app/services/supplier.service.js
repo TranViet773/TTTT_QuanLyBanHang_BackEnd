@@ -37,7 +37,7 @@ const getAllSuppliers = async ({ page = 1, limit = 10, search = '' }) => {
 
     } catch (error) {
         console.error('Lỗi khi lấy danh sách nhà cung cấp:', error);
-        throw new Error('Lỗi khi lấy danh sách nhà cung cấp');
+        return {error: 'Lỗi khi lấy danh sách nhà cung cấp'};
     }
 };
 

@@ -14,7 +14,11 @@ const userRoute = require('./app/routes/user.route');
 const supplierRoute = require('./app/routes/supplier.route');
 const itemTypeRoute = require('./app/routes/itemType.route');
 const itemRoute = require('./app/routes/item.route');
+const unitItemRoute = require('./app/routes/unitItem.route');
+const uploadRoute = require('./app/routes/upload.route');
 
+const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
+const unitInvouceRoute = require('./app/routes/unitInvoice.route')
 
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -24,12 +28,17 @@ app.use(cors({
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.urlencoded({ extended: true })); // Xử lý x-www-form-urlencoded nếu có
+
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
 app.use('/api/supplier', supplierRoute);
 app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
-
+app.use('/api/unit-items', unitItemRoute);
+app.use('/api/upload', uploadRoute);
+app.use('/api/purchase-invoices', purchaseInvoiceRoute);
+app.use('/api/unit-invoices', unitInvouceRoute)
 
 app.get('/', (request, respond) => {
   respond.status(200).json({

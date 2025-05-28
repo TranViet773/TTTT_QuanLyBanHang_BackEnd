@@ -25,13 +25,15 @@ const itemSchema = new mongoose.Schema(
         },
 
         UNIT:{
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Unit_Item',
             required: true,
         },
         
         PRICE:[{
             type: new mongoose.Schema({
                 PRICE_AMOUNT: {type: Number,},
+                UNIT: {type: mongoose.Schema.Types.ObjectId}, //UNIT_INVOICE
                 FROM_DATE:{type: Date},
                 THRU_DATE:{type: Date},
             }),
@@ -63,8 +65,11 @@ const itemSchema = new mongoose.Schema(
 
         ITEM_STOCKS: {
             type: new mongoose.Schema({
-                QUANTITY: { type: Number, },
-                LAST_UPDATE: { type: Date },
+                QUANTITY: { 
+                    type: Number, 
+                    min: [0, "Số lượng không được nhỏ hơn 0."]
+                },
+                LAST_UPDATED: { type: Date },
             }),
             _id: false,
         },
@@ -73,17 +78,43 @@ const itemSchema = new mongoose.Schema(
             {
                 type: new mongoose.Schema({
                     ITEM_CODE: { type: String },
-                    QUANTITY: { type: Number },
+                    QUANTITY: { 
+                        type: Number,
+                        min: [1, "Số lượng phải ít nhất là 1"]
+                    },
                     UNIT: { type: String },
+                    ITEM_CODE: { 
+                        type: String, 
+                        required: true 
+                    },
+                    QUANTITY: { type: Number },
+                    UNIT:{
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: 'Unit_Item',
+                        required: true,
+                    },
                     FROM_DATE: { type: Date },
                     THRU_DATE: { type: Date },
                 }),
+                _id: false,
+            }
+        ],
+
+        LIST_VOUCHER_ACTIVE: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'Vouchers',
+            }
+        ],
+
+        LIST_IMAGE:[
+            {
+                type: new mongoose.Schema({
+                    URL: { type: String, required: true }
+                }),
+                _id: false,
             }
         ]
-        
-    },
-    { 
-        timestamp: true 
     }
 )
 

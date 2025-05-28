@@ -169,73 +169,75 @@ const handleCreateUser = async (data) => {
     };
   }
 
-  const userData = {
-    LIST_NAME: [
-      {
-        LAST_NAME: lastName,
-        FIRST_NAME: firstName,
-        MIDDLE_NAME: middleName,
-        FULL_NAME: `${lastName} ${middleName} ${firstName}`,
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-      },
-    ],
-    CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
-    BIRTH_DATE: dob === null ? null : new Date(dob),
-    AVATAR_IMG_URL: avatar || "",
-    ROLE: role,
-    LIST_EMAIL: [
-      {
-        EMAIL: email,
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-      },
-    ],
-    LIST_ADDRESS: [
-      {
-        COUNTRY: country,
-        CITY: city,
-        DISTRICT: district,
-        WARD: ward,
-        ADDRESS_1: address1,
-        ADDRESS_2: address2,
-        STATE: state,
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-      },
-    ],
-    LIST_PHONE_NUMBER: [
-      {
-        COUNTRY_CODE: countryCode,
-        COUNTRY_NAME: countryName,
-        AREA_CODE: areaCode,
-        PHONE_NUMBER: phoneNumber,
-        FULL_PHONE_NUMBER: fullPhoneNumber,
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-      },
-    ],
-    LIST_CONTACT: [
-      {
-        LAST_NAME: lastName,
-        FIRST_NAME: firstName,
-        MIDDLE_NAME: middleName,
-        FULL_NAME: `${lastName} ${middleName} ${firstName}`,
-        PHONE_NUMBER: phoneNumber,
-        ADDRESS_1: address1,
-        ADDRESS_2: address2,
-        EMAIL: email,
-        WARD: ward,
-        DISTRICT: district,
-        CITY: city,
-        STATE: state,
-        COUNTRY: country,
-        RELATIONSHIP: relationship,
-        FROM_DATE: new Date(),
-        THRU_DATE: null,
-      },
-    ],
-  };
+    const userData = {
+        LIST_NAME: [
+            {
+                LAST_NAME: lastName,
+                FIRST_NAME: firstName,
+                MIDDLE_NAME: middleName,
+                FULL_NAME: `${lastName} ${firstName}`,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ],
+        CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
+        BIRTH_DATE: dob === null ? null : new Date(dob),
+        AVATAR_IMG_URL: avatar || '',
+        ROLE: role,
+        LIST_EMAIL: [
+            {
+                EMAIL: email,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ],
+        LIST_ADDRESS: [
+            {   
+                COUNTRY: country,
+                CITY: city,
+                DISTRICT: district,
+                WARD: ward,
+                ADDRESS_1: address1,
+                ADDRESS_2: address2,
+                STATE: state,
+                FROM_DATE: new Date(),
+                THRU_DATE: null
+            }
+        ],
+        LIST_PHONE_NUMBER: [
+            {
+                COUNTRY_CODE: countryCode,
+                COUNTRY_NAME: countryName,
+                AREA_CODE: areaCode,
+                PHONE_NUMBER: phoneNumber,
+                FULL_PHONE_NUMBER: fullPhoneNumber,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ],
+        LIST_CONTACT: [
+            {
+                LAST_NAME: lastName,
+                FIRST_NAME: firstName,
+                MIDDLE_NAME: middleName,
+                FULL_NAME: `${lastName} ${firstName}`,
+                PHONE_NUMBER: fullPhoneNumber,
+                ADDRESS_1: address1,
+                ADDRESS_2: address2,
+                EMAIL: email,
+                WARD: ward,
+                DISTRICT: district,
+                CITY: city,
+                STATE: state,
+                COUNTRY: country,
+                RELATIONSHIP: relationship,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ]
+    };
+
+
 
   let user = new User();
   try {
@@ -514,15 +516,37 @@ const handleForgotPassword = async (data) => {
     return { error: "Email chưa được đăng ký" };
   }
 
-  if (!(await authHelper.isValidEmail(user, data.email))) {
-    return {
-      error:
-        "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký.",
-    };
-  }
+    if (! await authHelper.isValidEmail(user, data.email)) {
+        return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
+    }
 
-  await authService.sendVerificationEmail(data);
-};
+    data.userId = user._id
+    data.firstName = user.FIRST_NAME || ''
+
+    await authService.sendResetPasswordEmail(data)
+}
+
+const resetPassword = async (data) => {
+    const {userId, newPassword} = data
+
+    const account = await Account.findOne({ USER_ID: userId })
+
+    if (!account) {
+        throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
+    }
+
+    if (await authService.isMatchedPassword(newPassword, account.PASSWORD)) {
+        return {error: "Mật khẩu mới không được trùng với mật khẩu trước đó."}
+    }
+
+    account.PASSWORD = await authService.hashPassword(newPassword)
+
+    try {
+        account.save()
+    } catch (error) {
+        throw new Error("Lỗi xảy ra khi đổi mật khẩu.")
+    }
+}
 
 const updateUser = async (userId, data, deviceId) => {
   const user = await User.findById(userId);
@@ -833,4 +857,5 @@ module.exports = {
   updateUser,
   handleForgotPassword,
   getUserByID,
+  resetPassword,
 };
