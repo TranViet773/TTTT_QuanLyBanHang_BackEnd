@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Xác thực Email</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      background-color: #d94452;
+      padding: 20px 0;
+      text-align: center;
+    }
+    .header img {
+      width: 40px;
+      vertical-align: middle;
+    }
+    .header h1 {
+      display: inline-block;
+      margin: 0;
+      color: #fff;
+      font-size: 24px;
+      vertical-align: middle;
+      font-weight: normal;
+    }
+    .container {
+      max-width: 600px;
+      margin: 40px auto;
+      background-color: #f7f8fa;
+      padding: 30px 40px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .highlight {
+      background-color: #ffeaa7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      margin-top: 25px;
+      background-color: #d94452;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="https://i.imgur.com/vQf8sL1.png" alt="logo"> <!-- hoặc thay bằng logo thực -->
+    <h1>biihappy</h1>
+  </div>
+
+  <div class="container">
+    <p>Xin chào <strong>{{username}}</strong>,</p>
+    <p>Xin chân thành cảm ơn bạn vì đã sử dụng dịch vụ của chúng tôi!</p>
+    <p><span class="highlight">Biihappy</span> xin thông báo tài khoản của bạn đã bị khóa.</p>
+    <p>Lý do: {{banReason}}</p> 
+    <p>Nếu có bất kỳ khiếu nại nào, vui lòng liên hệ với chúng tôi qua địa chỉ mail này.</p>
+  </div>
+
+  <div class="footer">
+    &copy; 2025 Biihappy. All rights reserved.
+  </div>
+</body>
+</html>

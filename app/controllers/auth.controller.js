@@ -1,5 +1,7 @@
 const userService = require('../services/user.service');
 const authService = require('../services/auth.service');
+const User = require('../models/User.model')
+const Account = require("../models/Account.model")
 const jwt = require('jsonwebtoken');
 
 const register = async (req, res) => {
@@ -54,24 +56,62 @@ const verifyAndCreateUser = async (req, res) => {
 };
 
 const createStaffUser = async (req, res) => {
+    let user = null
+
     try {
         const data = req.body
         data.createByUserId = req.user.USER_ID
 
-        const user = await userService.handleCreateUser(data)
+        const existingUser =
+            (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
+            (await Account.findOne({ USERNAME: data.username }));
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: "Email hoặc username đã được đăng ký!",
+                data: null
+            })
+        }
 
-        console.log("Tạo tài khoản thành công: ", user)
+        user = await userService.handleCreateUser(data)
 
-        await authService.mailToStaffUser(user)
+        if (user?.error) {
+            return res.status(400).json({
+                success: false,
+                message: user.error,
+                data: null
+            })
+        }
 
-        console.log("Email")
-
-        return res.status(201).json({
-            success: true,
-            message: 'Tạo tài khoản thành công.',
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
             data: null
         })
-    } catch (error) {
+    }
+
+    if (user) {
+        try {
+            await authService.mailToStaffUser(user)
+
+            return res.status(201).json({
+                success: true,
+                message: 'Tạo tài khoản thành công.',
+                data: null
+            })
+
+        } catch (error) {
+
+            await userService.rollbackCreatingStaffUser(user._id)
+
+            return res.status(500).json({
+                success: false,
+                message: error.message,
+                data: null
+            })
+        }
+    } else {
         return res.status(500).json({
             success: false,
             message: "Lỗi khi tạo tài khoản.",

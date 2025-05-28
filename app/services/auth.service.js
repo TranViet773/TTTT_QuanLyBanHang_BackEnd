@@ -104,8 +104,6 @@ async function sendResetPasswordEmail(data) {
 
 const mailToStaffUser = async (data) => {
 
-    console.log('Email')
-
     const templatePath = path.join(__dirname, '..', 'helpers', 'templates', 'welcomeStaffTemplate.html');
     let html = fs.readFileSync(templatePath, 'utf8');
 
@@ -121,7 +119,7 @@ const mailToStaffUser = async (data) => {
         });
     } catch (error) {
         console.error('Lỗi gửi email cấp tài khoản:', error);
-        return { error: 'Lỗi gửi email cấp tài khoản' };
+        throw new Error('Lỗi gửi email cấp tài khoản')
     }
 
 }

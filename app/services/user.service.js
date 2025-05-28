@@ -114,7 +114,7 @@ const handleUserDataForResponse = (user, account, device) => {
 
 const handleRegistration = async (data) => {
   const existingUser =
-    (await User.findOne({ 'LIST_EMAIL.EMAIL': data.email })) ||
+    (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
     (await Account.findOne({ USERNAME: data.username }));
   if (existingUser) return { error: "Email đã được đăng ký!" };
   await authService.sendVerificationEmail(data);
@@ -564,7 +564,7 @@ const updateUser = async (userId, data, deviceId) => {
 
     const firstName = data.firstName?.trim() || "";
     const middleName = data.middleName?.trim() || "";
-    const fullName = `${lastName} ${middleName} ${firstName}`.trim();
+    const fullName = `${lastName} ${firstName}`.trim();
 
     if (!lastName || !firstName) {
       return { error: "Vui lòng nhập đầy đủ họ và tên." };
@@ -928,8 +928,20 @@ const handleGetUserById = async (userId) => {
     }
 }
 
+const rollbackCreatingStaffUser = async (id) => {
+    try {
+      User.deleteOne({ _id: id})
+      Account.deleteOne({ USER_ID: id })
+      AccountDevice.deleteOne({ USER_ID: id })
+    } catch (error) {
+      console.log(error)
+      throw new Error(error.message)
+    }
+}
+
 module.exports = {
   handleCreateUser,
+  rollbackCreatingStaffUser,
   handleRegistration,
   login,
   handleRefreshToken,
