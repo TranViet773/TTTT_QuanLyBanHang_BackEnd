@@ -38,15 +38,10 @@ const getAllUnitInvoice = async (req, res) => {
 
 const updateUnitInvoice = async (req, res) => {
     try {
-        const response = await unitInvoiceService.updateUnitInvoice(req.body)
 
-        if(response?.error) {
-            return res.status(400).json({
-                message: response.error,
-                success: false,
-                data: null,
-            })
-        }
+        const data = req.body
+        data.unitInvoiceId = req.params.id
+        const response = await unitInvoiceService.updateUnitInvoice(data)
 
         return res.status(200).json({
             message: "Cập nhật đơn vị tiền tệ thành công.",
@@ -64,7 +59,7 @@ const updateUnitInvoice = async (req, res) => {
 
 const deleteUnitInvoice = async(req, res) => {
     try {
-        const response = await unitInvoiceService.deleteUnitInvoice(req.body.unitInvoiceId)
+        const response = await unitInvoiceService.deleteUnitInvoice(req.params.id)
         return res.status(200).json({
             message: "Xóa đơn vị tiền tệ thành công",
             success: true,

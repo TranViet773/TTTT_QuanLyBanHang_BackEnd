@@ -19,6 +19,9 @@ const unitInvoiceRoute = require('./app/routes/unitInvoice.route');
 const uploadRoute = require('./app/routes/upload.route');
 const accountRoute = require('./app/routes/account.route');
 
+const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
+const unitInvouceRoute = require('./app/routes/unitInvoice.route')
+
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
@@ -36,6 +39,7 @@ app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
 app.use('/api/unit-items', unitItemRoute);
 app.use('/api/upload', uploadRoute);
+app.use('/api/purchase-invoices', purchaseInvoiceRoute);
 app.use('/api/unit-invoices', unitInvoiceRoute);
 app.use('/api/account', accountRoute);
 

@@ -7,11 +7,6 @@ const purchaseInvoicesSchema = new mongoose.Schema({
         unique: true,
     },
 
-    SUPPLIER: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Supplier',
-    },
-
     IMPORT_DATE: { type: Date },
 
     IMPORTED_BY: {
@@ -21,9 +16,12 @@ const purchaseInvoicesSchema = new mongoose.Schema({
 
     STATUS: [{
         type: new mongoose.Schema({
-            status_name: {type: String},
-            from_date: { type: Date, },
-            thru_date: { type: Date, },
+            STATUS_NAME: {
+                type: String,
+                enum: ["DRAFT", "PENDING_APPROVAL", "CONFIRMED", "REJECTED", "PAYMENTED"],
+            },
+            FROM_DATE: { type: Date, },
+            THRU_DATE: { type: Date, },
         }),
 
         _id: false,
@@ -32,35 +30,68 @@ const purchaseInvoicesSchema = new mongoose.Schema({
     TOTAL_AMOUNT: {
         type: Number,
         required: true,
+        min: [0, "Số tiền (total amount) không thể là số âm."]
+    },
+
+    EXTRA_FEE: {
+        type: Number,
+        min: [0, "Số tiền (extra fee) không thể là số âm."]
+    },
+
+    EXTRA_FEE_UNIT: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
+
+    EXTRA_FEE_NOTE: {
+        type: String,
     },
 
     TAX: {
         type: Number,
-        required: true
     },
 
-    TOTAL_WITH_TAX: {
+    TOTAL_WITH_TAX_EXTRA_FEE: {
         type: Number,
-        required: true,
+        min: [0, "Số tiền (extra fee) không thể là số âm."] 
     },
 
     ITEMS: [
         {
             type: new mongoose.Schema({
                 ITEM_CODE: {
-                    type: mongoose.Schema.Types.ObjectId,
-                    ref: 'Item',
+                    type: String,
+                    require: true,
                 },
-                QUANTITY: { type: Number },
-                UNIT: { type: String, },
-                UNIT_PRICE: { type: Number },
-                TOTAL_PRICE: { type: Number },
-
+                SUPPLIER_ID: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Supplier',
+                },
+                QUANTITY: { 
+                    type: Number,
+                    min: [1, "Số lượng phải ít nhất là 1"]
+                },
+                UNIT: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: "UnitInvoice"
+                },
+                UNIT_PRICE: { 
+                    type: Number,
+                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                 },
+                TOTAL_PRICE: { 
+                    type: Number,
+                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                },
             }),
 
             _id: false,
         },
-    ]
+    ],
+
+    PAYMENTED: {
+        type: String,
+        enum: ["Tiền mặt", "Chuyển khoản"],
+    }
 })
 
 module.exports = mongoose.model('Purchase_Invoices', purchaseInvoicesSchema)
