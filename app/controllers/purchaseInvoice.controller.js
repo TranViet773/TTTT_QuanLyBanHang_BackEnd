@@ -5,6 +5,10 @@ const getAllInvoices = async (req, res) => {
 
         const query = {...req.query}
 
+        if (req.user.IS_CUSTOMER) {
+            query.userId = req.user.USER_ID
+        }
+
         console.log(query)
 
         const response = await purchaseInvoiceService.getAllInvoices(query)
@@ -34,10 +38,11 @@ const getAllInvoices = async (req, res) => {
 const getInvoiceByCode = async (req, res) => {
     try {
         const invoiceCode = req.params.invoiceCode
-        const response = await purchaseInvoiceService.getInvoiceByCode(invoiceCode)
+        const user = req.user
+        const response = await purchaseInvoiceService.getInvoiceByCode(invoiceCode, user)
 
         if (response?.error) {
-            return res.status(500).json({
+            return res.status(400).json({
                 message: response.error,
                 success: false,
                 data: null
@@ -62,6 +67,12 @@ const getInvoiceByCode = async (req, res) => {
 const createInvoice = async (req, res) => {
     try {
         const data = req.body
+
+        if (req.user.IS_CUSTOMER) {
+            data.statusName = "PENDING_APPROVAL"
+            data.isImportedInvoice = false
+        }
+
         data.importedBy = req.user.USER_ID
 
         const response = await purchaseInvoiceService.createInvoice(data)
@@ -92,7 +103,18 @@ const updateInvoiceStatus = async (req, res) => {
     try {
 
         const data = req.body
+
+        if (req.user.IS_CUSTOMER && !data.statusName === "REJECTED") {
+            return res.status(400).json({
+                message: `Người dùng không có quyền cập nhật trạng thái ${data.statusName}`,
+                success: false,
+                data: null,
+            })
+        }
+
         data.invoiceCode = req.params.invoiceCode
+        data.userId = req.user.USER_ID
+        data.isCustomer = req.user.IS_CUSTOMER
         const response = await purchaseInvoiceService.updateInvoiceStatus(data)
 
         if (response?.error) {
