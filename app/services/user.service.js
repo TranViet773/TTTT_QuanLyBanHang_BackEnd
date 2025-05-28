@@ -114,7 +114,7 @@ const handleUserDataForResponse = (user, account, device) => {
 
 const handleRegistration = async (data) => {
   const existingUser =
-    (await User.findOne({ EMAIL: data.email })) ||
+    (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
     (await Account.findOne({ USERNAME: data.username }));
   if (existingUser) return { error: "Email đã được đăng ký!" };
   await authService.sendVerificationEmail(data);
@@ -550,6 +550,11 @@ const resetPassword = async (data) => {
 
 const updateUser = async (userId, data, deviceId) => {
   const user = await User.findById(userId);
+
+  const backupContact = authHelper.isValidInfo(user.LIST_CONTACT);
+
+  const now = new Date();
+
   if (!user) {
     return { error: "Người dùng không tồn tại" };
   }
