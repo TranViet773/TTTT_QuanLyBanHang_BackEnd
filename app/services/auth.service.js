@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const mailerHelper = require("../helpers/mailer.helper");
 const fs = require("fs");
 const path = require("path");
+
 const generateAccessToken = (user, privateKey) => {
   return jwt.sign(
     {
@@ -26,7 +27,6 @@ const generateAccessToken = (user, privateKey) => {
     { algorithm: "RS256", expiresIn: process.env.ACCESS_TOKEN_EXPIRY }
   );
 };
-
 
 const generateRefreshToken = (user, privateKey) => {
   return jwt.sign(
@@ -124,7 +124,6 @@ const mailToStaffUser = async (data) => {
 
 }
 
-
 // Kiểm tra password
 const isMatchedPassword = async (plainPassword, hashedPassword) => {
   return await bcrypt.compare(plainPassword, hashedPassword);
@@ -155,6 +154,8 @@ const changePassword = async (userId, oldPassword, newPassword) => {
     };
   }
 };
+
+
 
 module.exports = {
   generateAccessToken,

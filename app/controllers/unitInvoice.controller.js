@@ -38,7 +38,6 @@ const getAllUnitInvoice = async (req, res) => {
 
 const updateUnitInvoice = async (req, res) => {
     try {
-
         const data = req.body
         data.unitInvoiceId = req.params.id
         const response = await unitInvoiceService.updateUnitInvoice(data)
