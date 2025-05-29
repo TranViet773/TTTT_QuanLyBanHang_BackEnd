@@ -169,6 +169,20 @@ const getAllItems = async ({
           'BOM_MATERIALS.UNIT_ABB': { $arrayElemAt: ['$bom_unit_info.UNIT_ITEM_ABB', 0] }
         }
       },
+      // 🔥 Lookup ITEM_NAME qua BOM_MATERIALS.ITEM_CODE
+      {
+        $lookup: {
+          from: 'items', // Tên collection chứa item chính
+          localField: 'BOM_MATERIALS.ITEM_CODE', // Tham chiếu theo ITEM_CODE
+          foreignField: 'ITEM_CODE',             // Ghép theo ITEM_CODE
+          as: 'bom_item_info'
+        }
+      },
+      {
+        $addFields: {
+          'BOM_MATERIALS.ITEM_NAME': { $arrayElemAt: ['$bom_item_info.ITEM_NAME', 0] }
+        }
+      },
 
       // Group lại BOM_MATERIALS
       {
