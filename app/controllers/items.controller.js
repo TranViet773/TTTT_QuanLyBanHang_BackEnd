@@ -49,7 +49,10 @@ const createItem = async (req, res) => {
     const itemData = req.body;
     try {
         const newItem = await itemService.createItem(itemData);
-        if(newItem.error) {
+        console.log(newItem)
+        console.log("flag")
+        if(newItem?.error) {
+
             return res.status(400).json({
                 success: false,
                 message: "Error creating item",
