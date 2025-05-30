@@ -300,9 +300,16 @@ const createItem = async (itemData) => {
         bomMaterials
     } = itemData;
 
-    const BOM = await createBOMMaterials(bomMaterials);
-    if(BOM.error!=null){
-        return {error: error}
+    let BOM
+
+    if (bomMaterials) {
+      BOM = await createBOMMaterials(bomMaterials);
+    } else {
+      BOM = null
+    }
+
+    if(BOM?.error!=null){
+        return {error: BOM.error}
     }
     const existingUnit = await UnitItemModel.findOne({ _id: unitId });
     if (!existingUnit) {
@@ -355,6 +362,7 @@ const createItem = async (itemData) => {
         }
         return newItem;
     } catch (error) {
+        console.log(error)
         console.error("Lỗi khi tạo item:", error);
         return {error: "Error creating item"};
     }
@@ -362,27 +370,28 @@ const createItem = async (itemData) => {
 
 const createBOMMaterials = async (BOMSData, itemId = null) => {
     const updatedBOMData = []; // Mảng để lưu các BOM mới
+
     for (const i of BOMSData) {
-        const item = await Item.findOne({ ITEM_CODE: i.ITEM_CODE });
-        if (item == null) return { error: "Nguyên liệu không tồn tại!" };
-        if (Number(i.QUANTITY) <= 0) return { error: "Số lượng không phù hợp" };
+      const item = await Item.findOne({ ITEM_CODE: i.ITEM_CODE });
+      if (item == null) return { error: "Nguyên liệu không tồn tại!" };
+      if (Number(i.QUANTITY) <= 0) return { error: "Số lượng không phù hợp" };
 
-        if (itemId != null) {
-            const itemInBOM = await Item.findOne({ _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE });
-            if (itemInBOM) {
-                // Nếu tồn tại, tăng số lượng
-                await Item.updateOne(
-                    { _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE },
-                    { $inc: { "BOM_MATERIALS.$.QUANTITY": Number(i.QUANTITY) } }
-                );
-                continue; // Bỏ item này ra khỏi danh sách mới thêm
-            }
-        }
+      if (itemId != null) {
+          const itemInBOM = await Item.findOne({ _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE });
+          if (itemInBOM) {
+              // Nếu tồn tại, tăng số lượng
+              await Item.updateOne(
+                  { _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE },
+                  { $inc: { "BOM_MATERIALS.$.QUANTITY": Number(i.QUANTITY) } }
+              );
+              continue; // Bỏ item này ra khỏi danh sách mới thêm
+          }
+      }
 
-        // Gán các giá trị bổ sung cho BOM mới
-        i.UNIT = item.UNIT;
-        i.FROM_DATE = new Date();
-        i.THRU_DATE = new Date();
+      // Gán các giá trị bổ sung cho BOM mới
+      i.UNIT = item.UNIT;
+      i.FROM_DATE = new Date();
+      i.THRU_DATE = new Date();
         updatedBOMData.push(i); // Thêm vào danh sách các BOM mới
     }
 
