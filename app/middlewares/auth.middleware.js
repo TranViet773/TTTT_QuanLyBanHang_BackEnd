@@ -35,7 +35,7 @@ const authenticateToken = async (req, res, next) => {
     );
     if (error) {
       return res.status(401).json({
-        message: "Thiết bị không hợp lệ 1",
+        message: error,
         success: false,
         data: null,
       });

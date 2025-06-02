@@ -328,6 +328,47 @@ const verifyAndResetPassword = async (req, res) => {
             data: null
         })
     }
+};
+
+const googleLogin = async (req, res) => {
+    const {token, deviceId} = req.body;
+    //console.log(req.body);
+    try{
+        const response = await userService.handleGoogleLogin(token, deviceId);
+        console.log("response: ", response);
+        if(response.error){
+            return res.status(500).json({
+                message: response.error,
+                success: false,
+                data: null
+            })
+        }else{
+            res.cookie('accessToken', response.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
+                sameSite: 'Lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
+                maxAge: 15 * 60 * 1000 // 15 phút
+            });
+
+            res.cookie('refreshToken', response.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
+            });
+            res.status(201).json({
+                success: true,
+                message: 'Login successfully',
+                data: response.user_data
+            })
+        }
+    }catch(e){
+        return res.status(500).json({
+            message: e.message,
+            success: false,
+            data: null
+        });
+    }
 }
 
 module.exports = {
@@ -340,5 +381,6 @@ module.exports = {
     logout,
     refreshToken,
     createStaffUser,
-    changePassword
+    changePassword,
+    googleLogin
 }
