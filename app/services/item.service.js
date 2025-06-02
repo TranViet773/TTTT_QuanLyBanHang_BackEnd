@@ -213,6 +213,9 @@ const getAllItems = async ({
           ITEM_TYPE_NAME: '$item_type_info.ITEM_TYPE_NAME',
           UNIT_NAME: '$unit_info.UNIT_ITEM_NAME',
           PRICE: 1,
+          AVATAR_IMAGE_URL: 1,
+          LIST_IMAGE: 1,
+          DESCRIPTION: 1,
           BOM_MATERIALS: 1
         }
       },

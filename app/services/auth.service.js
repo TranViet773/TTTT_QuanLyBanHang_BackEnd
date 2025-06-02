@@ -5,6 +5,11 @@ const bcrypt = require("bcryptjs");
 const mailerHelper = require("../helpers/mailer.helper");
 const fs = require("fs");
 const path = require("path");
+const { OAuth2Client } = require("google-auth-library");
+const clientId = process.env.GG_CLIENT_ID;
+const client = new OAuth2Client(clientId);
+const authHelper = require("../helpers/auth.helper");
+const userService = require("../services/user.service");
 
 const generateAccessToken = (user, privateKey) => {
   return jwt.sign(
@@ -155,7 +160,15 @@ const changePassword = async (userId, oldPassword, newPassword) => {
   }
 };
 
+const verifyTokenOAuth2 = async (token) => {
+  const ticket = await client.verifyIdToken({
+    idToken: token,
+    audience: clientId
+  });
 
+  const payload = ticket.getPayload();
+  return payload;
+}
 
 module.exports = {
   generateAccessToken,
@@ -165,5 +178,6 @@ module.exports = {
   sendVerificationEmail,
   sendResetPasswordEmail,
   mailToStaffUser,
-  changePassword
+  changePassword,
+  verifyTokenOAuth2
 };
