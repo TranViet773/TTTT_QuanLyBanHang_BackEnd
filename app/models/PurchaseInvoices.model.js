@@ -48,11 +48,12 @@ const purchaseInvoicesSchema = new mongoose.Schema({
 
     TAX: {
         type: Number,
+        min: [0, "Thuế không thể là số âm."]
     },
 
     TOTAL_WITH_TAX_EXTRA_FEE: {
         type: Number,
-        min: [0, "Số tiền (extra fee) không thể là số âm."] 
+        min: [0, "Số tiền (total) không thể là số âm."] 
     },
 
     ITEMS: [
@@ -68,19 +69,19 @@ const purchaseInvoicesSchema = new mongoose.Schema({
                 },
                 QUANTITY: { 
                     type: Number,
-                    min: [1, "Số lượng phải ít nhất là 1"]
+                    min: [1, "Số lượng phải ít nhất bằng 1"]
                 },
                 UNIT: {
                     type: mongoose.Schema.Types.ObjectId,
-                    ref: "UnitInvoice"
+                    ref: "Unit_Invoice"
                 },
                 UNIT_PRICE: { 
                     type: Number,
-                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                    min: [0, "Số tiền (unit price/item) không thể là số âm."]
                  },
                 TOTAL_PRICE: { 
                     type: Number,
-                    min: [0, "Số tiền (extra fee) không thể là số âm."]
+                    min: [0, "Số tiền (total price/item) không thể là số âm."]
                 },
             }),
 
