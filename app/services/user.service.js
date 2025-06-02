@@ -926,7 +926,6 @@ const handleGetUserById = async (userId) => {
             IS_MANAGER: user.ROLE.IS_MANAGER,
             IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
             IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-            IS_ACTIVE: account.IS_ACTIVE,
           },
           EMAIL: email.EMAIL,
           PHONE_NUMBER: {
@@ -935,7 +934,9 @@ const handleGetUserById = async (userId) => {
             AREA_CODE: phoneNumber?.AREA_CODE,
             PHONE_NUMBER: phoneNumber?.PHONE_NUMBER,
             FULL_PHONE_NUMBER: phoneNumber?.FULL_PHONE_NUMBER,
-          }
+          },
+          IS_ACTIVE: account.IS_ACTIVE,
+          IS_SUSPENDED: account.IS_SUSPENDED,
         },
       };
     }catch(e){

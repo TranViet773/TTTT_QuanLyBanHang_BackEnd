@@ -188,7 +188,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, userId, fromDate, toDate} = query
+        const {page, limit, search, userId, fromDate, toDate, isImported} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -230,6 +230,20 @@ const getAllInvoices = async (query) => {
         if (userId?.trim()) {
             matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
             console.log("thêm user id")
+        }
+
+        if (isImported?.trim()) {
+            if (isImported === 'false') {
+                matchConditions.push({
+                    'ITEMS.SUPPLIER_ID': null       // lọc bản ghi null hoặc không tồn tại
+                })
+            }
+
+            if (isImported === 'true') {
+                matchConditions.push({
+                    'ITEMS.SUPPLIER_ID': { $ne: null, $exists: true }   // lọc bản ghi có tồn tại và không null
+                })
+            }
         }
 
         if (fromDate?.trim()) {
@@ -703,6 +717,10 @@ const updateInvoiceStatus = async (data) => {
     } catch (error) {
         throw new Error(error)
     }
+}
+
+const staticInvoice = async () => {
+
 }
 
 module.exports = {

@@ -51,7 +51,7 @@ const getItemTypeById = async (req, res) => {
 
 const getItemTypeByName = async (req, res) => {
     try {
-        const { name } = req.params;
+        const { name = '' } = req.query;
         const itemType = await itemTypeService.getItemTypeByName(name);
         if (itemType.error) {
             return res.status(500).json({
