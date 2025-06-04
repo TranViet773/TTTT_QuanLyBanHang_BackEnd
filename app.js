@@ -18,9 +18,7 @@ const unitItemRoute = require('./app/routes/unitItem.route');
 const unitInvoiceRoute = require('./app/routes/unitInvoice.route');
 const uploadRoute = require('./app/routes/upload.route');
 const accountRoute = require('./app/routes/account.route');
-
 const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
-const unitInvouceRoute = require('./app/routes/unitInvoice.route')
 
 app.use(cors({
   origin: 'http://localhost:5173',

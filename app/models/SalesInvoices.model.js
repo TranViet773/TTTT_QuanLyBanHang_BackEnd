@@ -1,0 +1,117 @@
+const mongoose = require("mongoose")
+
+const salesInvoices = new mongoose.Schema({
+    INVOICE_CODE: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+
+    CUSTOMER_ID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+
+    SELL_DATE: {
+        type: Date
+    },
+
+    SOLD_BY: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    },
+
+    STATUS: {
+        type: String,
+        enum: ['DRAFT', 'CONFIRMED', 'CANCELLED', 'PAYMENTED'],
+    },
+
+    NOTE: {
+        type: String,
+    },
+
+    ITEM: [{
+        type: new mongoose.Schema({
+            ITEM_CODE: {
+                type: String,
+                require: true
+            },
+
+            QUANTITY: {
+                type: Number,
+                min: [1, 'Số lượng phải ít nhất bằng 1']
+            },
+
+            UNIT: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Unit_Invoices"
+            },
+
+            UNIT_PRICE: {
+                type: Number,
+                min: [0, "Số tiền (extra fee) không thể là số âm."]
+            },
+
+            TOTAL_PRICE: {
+                type: Number,
+                min: [0, "Số tiền (extra fee) không thể là số âm."]
+            },
+
+            PRODUCT_VOUCHER_ID: {
+                type: mongoose.Schema.Types.ObjectId,
+            }
+        })
+    }],
+
+    TOTAL_AMOUNT: {
+        type: Number,
+        min: [0, "Số tiền (total amount) không thể là số âm."],
+    },
+
+    VOUCHER_GLOBAL_ID: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Voucher'
+    },
+
+    TAX: {
+        type: Number,
+        min: [0, "Thuế không thể là số âm."],
+    },
+
+    EXTRA_FEE: {
+        type: Number,
+        min: [0, "Số tiền (extra fee) không thể là số âm."],
+    },
+
+    EXTRA_FEE_UNIT: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Unit_Invoices',
+    },
+
+    EXTRA_FEE_NOTE: {
+        type: String
+    },
+
+    TOTAL_WITH_TAX_EXTRA_CODE: {
+        type: String,
+        min: [0, 'Số tiền (total) không thể là số âm.'],
+    },
+
+    PAYMENT_METHOD: {
+        type: String,
+        enum: ['Tiền mặt', 'Chuyển khoản'],
+    },
+
+    PURCHASE_METHOD: {
+        type: String,
+        enum: ['IN_STORE', 'DELIVERY', 'ONLINE', 'PRE_ORDER']
+    },
+
+    CREATED_AT: {
+        type: Date,
+    },
+
+    UPDATED_AT: {
+        type: Date
+    }
+})

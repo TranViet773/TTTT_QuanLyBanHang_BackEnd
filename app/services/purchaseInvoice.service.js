@@ -1,9 +1,9 @@
 const PurchaseInvoice = require("../models/PurchaseInvoices.model")
 const Supplier = require("../models/Supplier.model")
 const Account = require("../models/Account.model")
-const Item = require("../models/Item.model")
 const User = require("../models/User.model")
 const authHelper = require("../helpers/auth.helper")
+const invoiceHelper = require('../helpers/invoice.helper')
 const { ObjectId } = require('mongodb')
 
 const handleInvoiceDataForResponse = async (invoice) => {
@@ -156,29 +156,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
             ...pipeline
         ])
 
-        const user = await User.findById(invoice.IMPORTED_BY)
-        const contact = authHelper.isValidInfo(user.LIST_CONTACT)
-        
-        if (!contact) {
-            throw new Error("Không thể lấy thông tin người dùng.")
-        }
-
-        response[0].USER_CONTACT = {
-            NAME: contact.FULL_NAME,
-            PHONE_NUMBER: contact.PHONE_NUMBER,
-            ADDRESS_1: contact.ADDRESS_1,
-            ADDRESS_2: contact.ADDRESS_2,
-            EMAIL: contact.EMAIL,
-            WARD: contact.WARD,
-            DISTRICT: contact.DISTRICT,
-            CITY: contact.CITY,
-            STATE: contact.STATE,
-            COUNTRY: contact.COUNTRY,
-        }
-
-        return response[0]
-
-
+        return response
     } catch (error) {
         console.log(error)
         throw new Error("Lỗi xảy ra khi truy vấn dữ liệu hóa đơn.")
@@ -270,10 +248,6 @@ const getAllInvoices = async (query) => {
                 IMPORT_DATE: "$IMPORT_DATE",
                 IMPORTED_BY: "$ACCOUNT.USERNAME",
                 STATUS: "$STATUS",
-                TOTAL_AMOUNT: "$TOTAL_AMOUNT",
-                EXTRA_FEE: "$EXTRA_FEE",
-                EXTRA_FEE_NOTE: "$EXTRA_FEE_NOTE",
-                TAX: "$TAX",
                 TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX_EXTRA_FEE",
                 PAYMENTED: "$PAYMENTED"
             }
@@ -380,32 +354,6 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
     return {totalAmount, count}
 }
 
-const getItemDocument = async (items) => {
-    const itemCodes = items.map(item => item.ITEM_CODE)
-    console.log("Item code list: ", itemCodes)
-
-    const originalItems = await (async () => {
-        try {
-            return await Item.find({
-                ITEM_CODE: { $in: itemCodes }
-            })
-        } catch (error) {
-            console.log(error.message)
-            return null
-        }
-    })()
-
-    if (!originalItems) {
-        return ({error: "Không tìm thấy item tương ứng."})
-    }
-
-    // copy lại items để rollback khi xảy ra lỗi
-    // đây là plain object, không phải mongoose document (không thể gọi các hàm như .save(),...)
-    const backupItems = originalItems.map(item => ({ ...item.toObject?.() || item}))
-
-    return {originalItems, backupItems}
-}
-
 const createInvoice = async (data) => {
     const {importedBy, statusName, extraFee, extraFeeUnit, extraFeeNote, tax, items, paymented} = data
 
@@ -417,7 +365,7 @@ const createInvoice = async (data) => {
         // lấy các document item tương ứng
         const {originalItems, backupItems, error} = await (async () => {
             try {
-                return getItemDocument(items)
+                return invoiceHelper.getItemDocument(items)
             } catch (error) {
                 console.log(error)
                 throw new Error(error.message)
@@ -557,7 +505,7 @@ const updateInvoiceStatus = async (data) => {
         // lấy các document item tương ứng
         const {originalItems, backupItems, error} = await (async () => {
             try {
-                return getItemDocument(invoice.ITEMS)
+                return invoiceHelper.getItemDocument(invoice.ITEMS)
             } catch (error) {
                 console.log(error)
                 throw new Error(error.message)
