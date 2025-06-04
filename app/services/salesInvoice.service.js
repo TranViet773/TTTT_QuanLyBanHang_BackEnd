@@ -1,10 +1,10 @@
-const SalesInvoices = require('../models/SalesInvoices.model')
+const SalesInvoice = require('../models/SalesInvoices.model')
 const Account = require('../models/Account.model')
 const User = require('../models/User.model')
-const Voucher = require('../models/Voucher.model')
+const Voucher = require('../models/Vouchers.model')
+const voucherService = require('../services/voucher.service')
 const authHelper = require('../helpers/auth.helper')
 const invoiceHelper = require('../helpers/invoice.helper')
-const voucherHelper = require('../helpers/voucher.helper')
 
 
 const handleInvoiceDataForResponse = async (invoice) => {
@@ -15,8 +15,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: "items",
-                    localFields: 'ITEMS.ITEM_CODE',
-                    foreignFields: 'ITEM_CODE',
+                    localField: 'ITEMS.ITEM_CODE',
+                    foreignField: 'ITEM_CODE',
                     as: 'ITEM_DETAILS'
                 },
             },
@@ -24,8 +24,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'unit_invoices',
-                    localFields: 'ITEMS.UNIT',
-                    foreignFields: '_id',
+                    localField: 'ITEMS.UNIT',
+                    foreignField: '_id',
                     as: 'ITEM_UNIT_INVOICES'
                 }
             },
@@ -33,8 +33,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'vouchers',
-                    localFields: 'ITEMS.PRODUCT_VOUCHER_ID',
-                    foreignFields: '_id',
+                    localField: 'ITEMS.PRODUCT_VOUCHER_ID',
+                    foreignField: '_id',
                     as: 'ITEM_VOUCHERS'
                 }
             },
@@ -51,11 +51,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                     
                                     {
                                         $let: {
-                                            $var: {
+                                            vars: {
                                                 matchedItem: {
                                                     $arrayElemAt: [{
                                                         $filter: {
-                                                            input: "$ITEM_DETAIL",
+                                                            input: "$ITEM_DETAILS",
                                                             as: 'item_detail',
                                                             cond: {
                                                                 $eq: ['$$item.ITEM_CODE', '$$item_detail.ITEM_CODE']
@@ -66,9 +66,9 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                             },
                                             in: {
                                                 ITEM_DETAIL: {
-                                                    ITEM_NAME: "$matchedItem.ITEM_NAME",
-                                                    ITEM_NAME_EN: '$matchedItem.ITEM_NAME_EN',
-                                                    AVATAR_IMG_URL: '$matchedItem.AVATAR_IMG_URL',
+                                                    ITEM_NAME: "$$matchedItem.ITEM_NAME",
+                                                    ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
+                                                    AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
                                                 }
                                             }
                                         }                                        
@@ -76,11 +76,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
 
                                     {
                                         $let: {
-                                            $var: {
-                                                matchUnit: {
+                                            vars: {
+                                                matchedUnit: {
                                                     $arrayElemAt: [{
                                                         $filter: {
-                                                            input: 'ITEM_UNIT_INVOICES',
+                                                            input: '$ITEM_UNIT_INVOICES',
                                                             as: 'unit',
                                                             cond: {
                                                                 $eq: ['$$item.UNIT', '$$unit._id']
@@ -90,11 +90,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                 }
                                             },
 
-                                            $in: {
+                                            in: {
                                                 UNIT: {
-                                                    UNIT_NAME: '$matchedUnit.UNIT_NAME',
-                                                    UNIT_NAME_EN: '$matchedUnit.UNIT_NAME_EN',
-                                                    UNIT_ABB: '$matchedUnit.UNIT_ABB',
+                                                    UNIT_NAME: '$$matchedUnit.UNIT_NAME',
+                                                    UNIT_NAME_EN: '$$matchedUnit.UNIT_NAME_EN',
+                                                    UNIT_ABB: '$$matchedUnit.UNIT_ABB',
                                                 }
                                             }
                                         }                                     
@@ -102,11 +102,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
 
                                     {
                                         $let: {
-                                            $var: {
-                                                matchVoucher: {
+                                            vars: {
+                                                matchedVoucher: {
                                                     $arrayElemAt: [{
                                                         $filter: {
-                                                            input: 'ITEM_VOUCHERS',
+                                                            input: '$ITEM_VOUCHERS',
                                                             as: 'voucher',
                                                             cond: {
                                                                 $eq: ['$$item.PRODUCT_VOUCHER_ID', '$$voucher._id']
@@ -115,11 +115,12 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                     }, 0]
                                                 }
                                             },
-                                            $in: {
+                                            in: {
                                                 VOUCHER: {
-                                                    VOUCHER_CODE: '$matchedVoucher.VOUCHER_CODE',
-                                                    VALUE: '$matchedVoucher.VALUE',
-                                                    MAX_DISCOUNT: '$matchedVoucher.MAX_DISCOUNT',        
+                                                    VOUCHER_CODE: '$$matchedVoucher.VOUCHER_CODE',
+                                                    TYPE: '$matchedVoucher.TYPE',
+                                                    VALUE: '$$matchedVoucher.VALUE',
+                                                    MAX_DISCOUNT: '$$matchedVoucher.MAX_DISCOUNT',        
                                                }
                                             }
                                         }
@@ -134,8 +135,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'accounts',
-                    localFields: 'CUSTOMER_ID',
-                    foreignFields: 'USER_ID',
+                    localField: 'CUSTOMER_ID',
+                    foreignField: 'USER_ID',
                     as: 'CUSTOMER',
                 }
             },
@@ -150,8 +151,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'accounts',
-                    localFields: 'SOLD_BY',
-                    foreignFields: 'USER_ID',
+                    localField: 'SOLD_BY',
+                    foreignField: 'USER_ID',
                     as: 'STAFF'
                 }
             },
@@ -166,8 +167,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'vouchers',
-                    localFields: 'VOUCHER_GLOBAL_ID',
-                    foreignFields: '_id',
+                    localField: 'VOUCHER_GLOBAL_ID',
+                    foreignField: '_id',
                     as: 'VOUCHER',
                 }
             },
@@ -185,18 +186,23 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     INVOICE_CODE: '$INVOICE_CODE',
                     CUSTOMER: '$CUSTOMER.USERNAME',
                     SELL_DATE: '$SELL_DATE',
-                    SOLD_BY: '$STAFF',
+                    SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
                     NOTE: '$NOTE',
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
-                    GLOBAL_VOUCHER: '$VOUCHER',
+                    GLOBAL_VOUCHER: {
+                        VOUCHER_CODE: '$VOUCHER.VOUCHER_CODE',
+                        TYPE: '$VOUCHER.TYPE',
+                        VALUE: '$VOUCHER.VALUE',
+                        MAX_DISCOUNT: '$VOUCHER.MAX_DISCOUNT'
+                    },
                     TAX: '$TAX',
                     EXTRA_FEE: '$EXTRA_FEE',
                     EXTRA_FEE_UNIT: '$EXTRA_FEE_UNIT',
                     EXTRA_FEE_NOTE: '$EXTRA_FEE_NOTE',
                     TOTAL_WITH_TAX_EXTRA_FEE: '$TOTAL_WITH_TAX_EXTRA_FEE',
-                    PAYMENT_STATUS: '$PAYMENT_STATUS',
+                    PAYMENT_METHOD: '$PAYMENT_METHOD',
                     PURCHASE_METHOD: '$PURCHASE_METHOD',
                     CREATED_AT: '$CREATED_AT',
                     UPDATED_AT: '$UPDATED_AT'
@@ -204,13 +210,13 @@ const handleInvoiceDataForResponse = async (invoice) => {
             }
         ]
 
-        const response = await SalesInvoices.aggregate([
+        const response = await SalesInvoice.aggregate([
             {
                 $match: {
-                    _id: invoice.INVOICE_CODE
+                    _id: invoice._id
                 },
-                ...pipeline
-            }
+            },
+            ...pipeline
         ])
 
         if (invoice.CUSTOMER_ID) {
@@ -221,7 +227,29 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 throw new Error("Không thể lấy thông tin người dùng.")
             }
 
-            response[0].USER_CONTACT = {
+            response[0].CUSTOMER_CONTACT = {
+                NAME: contact.FULL_NAME,
+                PHONE_NUMBER: contact.PHONE_NUMBER,
+                ADDRESS_1: contact.ADDRESS_1,
+                ADDRESS_2: contact.ADDRESS_2,
+                EMAIL: contact.EMAIL,
+                WARD: contact.WARD,
+                DISTRICT: contact.DISTRICT,
+                CITY: contact.CITY,
+                STATE: contact.STATE,
+                COUNTRY: contact.COUNTRY,
+            }
+        }
+
+        if (invoice.SOLD_BY) {
+            const user = await User.findById(invoice.SOLD_BY)
+            const contact = authHelper.isValidInfo(user.LIST_CONTACT)
+            
+            if (!contact) {
+                throw new Error("Không thể lấy thông tin người dùng.")
+            }
+
+            response[0].STAFF_CONTACT = {
                 NAME: contact.FULL_NAME,
                 PHONE_NUMBER: contact.PHONE_NUMBER,
                 ADDRESS_1: contact.ADDRESS_1,
@@ -242,7 +270,6 @@ const handleInvoiceDataForResponse = async (invoice) => {
         throw new Error ('Lỗi khi truy xuất hóa đơn')
     }
 }
-
 
 const getAllInvoices = async (query) => {
     try {
@@ -349,7 +376,7 @@ const getAllInvoices = async (query) => {
                 INVOICE_CODE: "$INVOICE_CODE",
                 CUSTOMER: "$CUSTOMER.USERNAME",
                 SELL_DATE: "$SELL_DATE",
-                SOLD_BY: "$ACCOUNT.USERNAME",
+                SOLD_BY: "$STAFF.USERNAME",
                 STATUS: "$STATUS",
                 TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX_EXTRA_FEE",
                 PAYMENT_METHOD: "$PAYMENT_METHOD",
@@ -363,13 +390,11 @@ const getAllInvoices = async (query) => {
         console.log(JSON.stringify(pipeline, null, 2));
 
         const [totalResult, results] = await Promise.all([
-            PurchaseInvoice.aggregate(totalPipeline),
-            PurchaseInvoice.aggregate(pipeline)
+            SalesInvoice.aggregate(totalPipeline),
+            SalesInvoice.aggregate(pipeline)
         ])
 
         console.log(results)
-
-        // const results = await PurchaseInvoicesModel.aggregate(pipeline)
                         
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
@@ -391,7 +416,9 @@ const getAllInvoices = async (query) => {
 
 const getInvoiceByCode = async (invoiceCode) => {
     try {
-        const invoice = await SalesPurchase.findOne({INVOICE_CODE: invoiceCode})
+        console.log(invoiceCode)
+
+        const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
 
         console.log(invoice)
 
@@ -406,7 +433,9 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
 
     let totalAmount = 0     // tổng tiền hàng của hóa đơn
     let count = 0           // đếm số lượng các item đã update, hỗ trợ cho rollback không cần phải duyệt những item chưa được update
+    const vouchers = []
 
+    console.log("originalItems: ", originalItems)
     for(const addItem of items) {
 
         for(const item of originalItems) {
@@ -429,6 +458,32 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 item.ITEM_STOCKS.QUANTITY -=  addItem.QUANTITY,
                 item.ITEM_STOCKS.LAST_UPDATED = now
 
+                if (addItem.PRODUCT_VOUCHER_ID) {
+                    const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
+
+                    if (!voucher) {
+                        return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
+                    }
+
+                    try {
+                        await voucherService.updateNumberUsing(voucher)
+                        vouchers.push(voucher)
+                        
+                        const discount = voucher.TYPE === 'PERCENTAGE' ? addItem.TOTAL_PRICE * voucher.VALUE / 100
+                                                                        : voucher.VALUE
+
+                        addItem.TOTAL_PRICE = discount < voucher.MAX_DISCOUNT ? addItem.TOTAL_PRICE - discount
+                                                                                : addItem.TOTAL_PRICE - voucher.MAX_DISCOUNT
+
+                    } catch (error) {
+                        if (vouchers.length > 0) {
+                            await voucherService.rollbackNumberUsing(vouchers)
+                        }
+                        
+                        throw new Error(error)
+                    }
+                }
+
                 try {
                     await item.save()
                     totalAmount += addItem.TOTAL_PRICE
@@ -443,18 +498,21 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
         }
     }
 
-    return {totalAmount, count}
+    return {totalAmount, count, vouchers}
 }
 
 const createInvoice = async (data) => {
-    const {status, note, items, voucherGlobalId, tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+    const {status, soldBy, customerId, note, items, voucherGlobalId, tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
 
+    if (status === 'CANCELLED') {
+        return { error: `Status ${status} không hợp lệ.`}
+    }
 
     try {
         if(!await Account.findOne({ USER_ID: soldBy })) {
             return {error: "Người dùng không tồn tại."}
         }
-
+        
         // lấy các document item tương ứng
         const {originalItems, backupItems, error} = await (async () => {
             try {
@@ -465,7 +523,8 @@ const createInvoice = async (data) => {
             }
         })()
 
-        console.log(originalItems)
+        console.log("Original items: ", originalItems)
+        console.log("Backup items: ", originalItems)
 
         if (error) {
             return error
@@ -475,6 +534,7 @@ const createInvoice = async (data) => {
 
         let count = 0
         let totalAmount = 0
+        let vouchers = []
 
         if (status === 'CONFIRMED' || status === 'PAYMENTED') {
             const updatingData = await updateItemForExporting(items, originalItems, backupItems, now)
@@ -487,11 +547,11 @@ const createInvoice = async (data) => {
             
             count = updatingData.count
             totalAmount = updatingData.totalAmount
+            vouchers = updatingData.vouchers
         }
         
         else {
             for(const addItem of items) {          
-
                 for(const item of originalItems) {
 
                     if(item.ITEM_CODE === addItem.ITEM_CODE) {
@@ -507,7 +567,16 @@ const createInvoice = async (data) => {
                                 return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                             }
 
-                            // if (voucherHelper.isVoucherAvailable(voucher))
+                            try {
+                                await voucherService.updateNumberUsing(voucher)
+                                vouchers.push(voucher)
+                            } catch (error) {
+                                if (vouchers.length > 0) {
+                                    await voucherService.rollbackNumberUsing(vouchers)
+                                }
+                                
+                                throw new Error(error)
+                            }
                         }
 
                         addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
@@ -520,37 +589,56 @@ const createInvoice = async (data) => {
             }
         }
 
+        console.log("Items: ", items)
+
         const taxValue = tax ? totalAmount * tax / 100 : 0
 
-        if (voucherGlobalId) {
-            const voucher = await Voucher.findById(voucherGlobalId)
+        if (status !== 'DRAFT') {
+            if (voucherGlobalId) {
+                const voucher = await Voucher.findById(voucherGlobalId)
 
-            if (!voucher) {
-                return { error: "Voucher không tồn tại." }
+                if (!voucher) {
+                    return { error: "Voucher không tồn tại." }
+                }
+
+                try {
+                    const updateVoucher = await voucherService.updateNumberUsing(voucher)
+                    if (updateVoucher?.error) {
+                        return {error: updateVoucher.error}
+                    }
+
+                    else {
+                        vouchers.push(voucher)
+                        if (voucher.TYPE === 'PERCENTAGE') {
+                            const discount = totalAmount * voucher.VALUE / 100
+
+                            totalAmount = discount < voucher.MAX_DISCOUNT ? totalAmount - discount : totalAmount - voucher.MAX_DISCOUNT
+                        }
+
+                        else {
+                            totalAmount = voucher.VALUE < voucher.MAX_DISCOUNT ? totalAmount - voucher.VALUE  : totalAmount - voucher.MAX_DISCOUNT
+                        }
+
+                        totalAmount = totalAmount < 0 ? 0 : totalAmount
+                    }
+                } catch (error) {
+                    if (vouchers.length > 0) {
+                        await voucherService.rollbackNumberUsing(vouchers)
+                    }
+                    
+                    throw new Error(error)
+                }
             }
-
-            // update
-
-            if (voucher.TYPE === 'PERCENTAGE') {
-                const discount = total * voucher.value / 100
-
-                totalAmount = discount < voucher.MAX_DISCOUNT ? totalAmount - discount : totalAmount - voucher.MAX_DISCOUNT
-            }
-
-            else {
-                totalAmount = voucher.VALUE < voucher.MAX_DISCOUNT ? totalAmount - voucher.VALUE  : totalAmount - voucher.MAX_DISCOUNT
-            }
-
-            totalAmount = totalAmount < 0 ? 0 : totalAmount
         }
 
+        console.log("vouchers: ", vouchers)
 
         const invoiceData = {
             INVOICE_CODE: now.getTime(),
-            CUSTOMER_ID: customerId,
+            CUSTOMER_ID: customerId || null,
             SELL_DATE: now,
             SOLD_BY: soldBy,
-            STATUS: statusName,
+            STATUS: status,
             NOTE: note,
             ITEMS: items,
             TOTAL_AMOUNT: totalAmount,
@@ -568,10 +656,14 @@ const createInvoice = async (data) => {
 
         const invoice = await (async () => {
             try {
-                return await (new SalesInvoices(invoiceData)).save()
+                const newInvoice = new SalesInvoice(invoiceData)
+                return await newInvoice.save()
             } catch (error) {
-                if (statusName === 'CONFIRMED' || statusName === 'PAYMENTED') {
+                if (status === 'CONFIRMED' || status === 'PAYMENTED') {
                     invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                }
+                if (vouchers.length > 0) {
+                    await voucherService.rollbackNumberUsing(vouchers)
                 }
                 console.log(error.message)
                 return null
@@ -588,11 +680,80 @@ const createInvoice = async (data) => {
     }
 }
 
+const updateInvoice = async (data) => {
+    const {invoiceCode, status} = data
+    const now = new Date()
+    let count = 0       // đếm document
 
+    const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
+
+    if(!invoice) {
+        return ({error: "Không tìm thấy hóa đơn."})
+    }
+    if (status === 'DRAFT') {
+        return ({error: "Không thể cập nhật trạng thái DRAFT."})
+    }
+    if (invoice.STATUS === 'PAYMENTED' || invoice.STATUS === 'CANCELLED') {
+        return ({error: "Hóa đơn đã đạt trạng thái cuối."})
+    }  
+    if (invoice.STATUS === 'CONFIRMED' && invoice.STATUS !== 'PAYMENTED') {
+        return ({ error: `Không thể chuyển sang trạng thái ${status} cho hóa đơn đã được xác nhận.` })
+    }
+
+    try {
+        // lấy các document item tương ứng
+        const {originalItems, backupItems, error} = await (async () => {
+            try {
+                return invoiceHelper.getItemDocument(invoice.ITEMS)
+            } catch (error) {
+                console.log(error)
+                throw new Error(error.message)
+            }
+        })()
+
+        console.log(originalItems)
+
+        if (error) {
+            return error
+        }
+
+        try {
+            if (
+                (invoice.STATUS === 'DRAFT') && 
+                (status === 'CONFIRMED' || (status === 'PAYMENTED' && invoice.STATUS !== 'CONFIRMED'))
+            ) {
+                const items = invoice.ITEMS.map(item => ({ ...item.toObject?.() || item}))
+
+                const updateItems = await updateItemForExporting(items, originalItems, backupItems, now)
+
+                if (updateItems.error) {
+                    return updateItems
+                }
+
+                count = updateItems.count             
+            }
+
+            invoice.STATUS = status
+            invoice.UPDATED_AT = now
+
+            const updateInvoice = await invoice.save()
+            return await handleInvoiceDataForResponse(updateInvoice)
+
+        } catch (error) {
+
+            invoiceHelper.rollbackItems(count, originalItems, backupItems)
+
+            console.log(error)
+            throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
+        }
+    } catch (error) {
+        throw new Error(error)
+    }
+}
 
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
-
+    updateInvoice
 }

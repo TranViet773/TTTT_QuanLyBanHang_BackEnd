@@ -156,7 +156,30 @@ const handleInvoiceDataForResponse = async (invoice) => {
             ...pipeline
         ])
 
-        return response
+        if (invoice.IMPORTED_BY) {
+            const user = await User.findById(invoice.IMPORTED_BY)
+            const contact = authHelper.isValidInfo(user.LIST_CONTACT)
+            
+            if (!contact) {
+                throw new Error("Không thể lấy thông tin người dùng.")
+            }
+
+            response[0].USER_CONTACT = {
+                NAME: contact.FULL_NAME,
+                PHONE_NUMBER: contact.PHONE_NUMBER,
+                ADDRESS_1: contact.ADDRESS_1,
+                ADDRESS_2: contact.ADDRESS_2,
+                EMAIL: contact.EMAIL,
+                WARD: contact.WARD,
+                DISTRICT: contact.DISTRICT,
+                CITY: contact.CITY,
+                STATE: contact.STATE,
+                COUNTRY: contact.COUNTRY,
+            }
+        }
+
+        return response[0]
+
     } catch (error) {
         console.log(error)
         throw new Error("Lỗi xảy ra khi truy vấn dữ liệu hóa đơn.")
@@ -454,7 +477,7 @@ const createInvoice = async (data) => {
     }
 }
 
-const updateInvoiceStatus = async (data) => {
+const updateInvoice = async (data) => {
     const {invoiceCode, statusName} = data
     const now = new Date()
     let count = 0       // đếm document
@@ -550,5 +573,5 @@ module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
-    updateInvoiceStatus,
+    updateInvoice,
 }

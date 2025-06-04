@@ -30,7 +30,7 @@ const salesInvoices = new mongoose.Schema({
         type: String,
     },
 
-    ITEM: [{
+    ITEMS: [{
         type: new mongoose.Schema({
             ITEM_CODE: {
                 type: String,
@@ -115,3 +115,5 @@ const salesInvoices = new mongoose.Schema({
         type: Date
     }
 })
+
+module.exports = mongoose.model('Sales_Invoices', salesInvoices)

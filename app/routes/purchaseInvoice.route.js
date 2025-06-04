@@ -5,7 +5,7 @@ const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.
 
 // Post 
 router.post('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.createInvoice)
-router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.updateInvoiceStatus)
+router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.updateInvoice)
 router.get('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.getAllInvoices)
 router.get('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.getInvoiceByCode)
 
