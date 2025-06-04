@@ -1,4 +1,4 @@
-const accountService = require('../services/account.service');
+const accountService = require("../services/account.service");
 
 const setSuspended = async (req, res) => {
     const { username, isSuspended, banReason } = req.body;
@@ -73,6 +73,6 @@ const setActive = async (req, res) => {
 
 
 module.exports = {
-    setSuspended,
-    setActive
+  setSuspended,
+  setActive,
 };
