@@ -4,7 +4,7 @@ const ItemTypeModel = require("../models/ItemType.model.js");
 const UnitItemModel = require("../models/UnitItem.model.js");
 const { ObjectId } = require('mongodb');
 const uploadService = require('../services/upload.service.js');
-
+const Voucher = require("../models/Vouchers.model.js");
 
 const getAllItems = async ({
   page = 1,
@@ -124,6 +124,17 @@ const getAllItems = async ({
 
       // Unwind PRICE
       { $unwind: { path: '$PRICE', preserveNullAndEmptyArrays: true } },
+
+      //VOUCHER
+      {
+        $lookup: {
+          from: 'vouchers',
+          localField: 'LIST_VOUCHER_ACTIVE',
+          foreignField: '_id',
+          as: 'LIST_VOUCHER_ACTIVE'
+        }
+      },
+      
       {
         $lookup: {
           from: 'unit_invoices',
@@ -218,6 +229,7 @@ const getAllItems = async ({
           AVATAR_IMAGE_URL: 1,
           LIST_IMAGE: 1,
           DESCRIPTION: 1,
+          LIST_VOUCHER_ACTIVE: 1,
           BOM_MATERIALS: {
             $cond: {
               if: {
@@ -420,7 +432,6 @@ const createBOMMaterials = async (BOMSData, itemId = null) => {
 
     return updatedBOMData; // Chỉ chứa BOM mới cần thêm
 };
-
 
 const updateItem = async (id, itemData) => {
     try {
@@ -648,6 +659,69 @@ const updateImagesForItem = async (id, images) => {
     }
 };
 
+const addVoucherForItem = async (itemId, voucherId) => {
+  try{
+
+    const voucher = await Voucher.findById(voucherId);
+    if(!voucher) return {error: "Voucher không tồn tại!"};
+    
+    const item = await Item.findById(itemId);
+    if(!item) return {error: "Item không tồn tại!"};
+
+    const voucherInItem = item.LIST_VOUCHER_ACTIVE.some((voucherid) => voucherid.equals(voucherId));
+    if (voucherInItem) return { error: "Voucher đã tồn tại trong item!" };
+
+    if(!voucher.IS_ACTIVE) return {error: "Voucher hết hạn sử dụng!"} ;
+
+    const updateItem = await Item.findByIdAndUpdate(
+      itemId,
+      {
+        $push: {
+          LIST_VOUCHER_ACTIVE: voucherId
+        },
+        $set: {
+          UPDATED_AT: new Date()
+        }
+      },
+      {
+        new: true
+      }
+    )
+    return updateItem;
+  }catch (error){
+    console.log(error)
+    return {error: "Lỗi khi thêm voucher vào item!"}
+  }
+};
+
+const removeVoucherForItem = async (itemId, voucherId) => {
+  try{
+    const voucher = await Voucher.findById(voucherId);
+    if(!voucher) return {error: "Voucher không tồn tại!"};
+    
+    const item = await Item.findById(itemId);
+    if(!item) return {error: "Item không tồn tại!"}
+
+    const updateItem = await Item.findByIdAndUpdate(
+      itemId,
+      {
+        $pull: {
+          LIST_VOUCHER_ACTIVE: voucherId
+        },
+        $set: { UPDATED_AT: new Date() }
+
+      },
+      {
+        new: true
+      }
+    )
+    return updateItem;
+  }catch (error){
+    return {error: "Có lỗi khi xóa voucher ra khỏi danh sách"}
+  }
+}
+
+
 module.exports = {
     getAllItems,
     getItemByCode,
@@ -661,5 +735,7 @@ module.exports = {
     addBOMMaterialToItem,
     updateBOMMaterialInItem,
     removeBOMMaterialFromItem,
-    updateImagesForItem
+    updateImagesForItem,
+    removeVoucherForItem,
+    addVoucherForItem
 };

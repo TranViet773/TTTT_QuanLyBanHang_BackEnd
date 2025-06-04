@@ -79,6 +79,7 @@ const updateNumberUsing = async (voucher) => {
         };
     }
 };
+
 const createVoucher = async (data) => {
     // const newVoucher = new Voucher(data);
     // return await newVoucher.save();
