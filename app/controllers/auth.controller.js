@@ -371,6 +371,33 @@ const googleLogin = async (req, res) => {
     }
 }
 
+const verifyAccount = async (req, res) => {
+    try{
+        const {USER_ID, DEVICE_ID} = req.user;
+        const response = await authService.handleVerifyAccount(USER_ID, DEVICE_ID);
+        if(response.error){
+            res.status(500).json({
+                message: `Có lỗi khi xác thực: ${response.error}`,
+                success: false,
+                data: null
+            });
+        }
+        return res.status(200).json({
+            message: "Xác thực thành công!",
+            success: true,
+            data: response
+        })
+    }catch(e)
+    {
+       console.log("Có lỗi khi xác thực!");
+       return res.status(500).json({
+         message: `Có lỗi khi xác thực: ${e}`,
+         success: false,
+         data: null
+       }); 
+    }
+}
+
 module.exports = {
     register,
     verifyAndCreateUser,
@@ -382,5 +409,6 @@ module.exports = {
     refreshToken,
     createStaffUser,
     changePassword,
-    googleLogin
+    googleLogin,
+    verifyAccount
 }

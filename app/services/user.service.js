@@ -178,7 +178,7 @@ const handleCreateUser = async (data) => {
                 LAST_NAME: lastName,
                 FIRST_NAME: firstName,
                 MIDDLE_NAME: middleName,
-                FULL_NAME: `${lastName} ${firstName}`,
+                FULL_NAME: lastName && firstName ? `${lastName} ${firstName}` : lastName ? lastName : firstName,
                 FROM_DATE: new Date(),
                 THRU_DATE: null,
             }
@@ -958,7 +958,6 @@ const rollbackCreatingStaffUser = async (id) => {
 
 const handleGoogleLogin = async (token, deviceId) => {
   const payload = await authService.verifyTokenOAuth2(token);
-
   const { email, sub, name, family_name, picture, given_name, iat, exp } = payload;
   const expDate = new Date(exp*1000);
   const now = new Date();

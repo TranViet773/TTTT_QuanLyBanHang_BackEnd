@@ -15,5 +15,5 @@ router.put('/change-password', authenticateToken, authController.changePassword)
 router.post('/forget-password', authController.sendForgetPasswordEmail)
 router.post('/reset-password', authController.verifyAndResetPassword)
 router.post('/google', authController.googleLogin);
-
+router.get('/verify-role', authenticateToken, authController.verifyAccount);
 module.exports = router;
