@@ -17,4 +17,6 @@ router.put('/bom-materials/:id', authenticateMiddleware.authenticateToken, itemC
 router.post('/delete-bom-materials/:id', authenticateMiddleware.authenticateToken, itemController.deleteBOMMaterialInItem);
 router.put('/price/:id', authenticateMiddleware.authenticateToken, itemController.updateItemPrice);
 router.put('/images/:id', authenticateMiddleware.authenticateToken, itemController.updateListImageForItem);
+router.put('/add-voucher/:id', authenticateMiddleware.authenticateToken, itemController.addVoucherForItem);
+router.put('/remove-voucher/:id', authenticateMiddleware.authenticateToken, itemController.removeVoucherForItem);
 module.exports = router;
