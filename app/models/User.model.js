@@ -31,8 +31,6 @@ const userSchema = new mongoose.Schema(
                 _id: false,
             }
         ],
-
-        
         
         CURRENT_GENDER: {
             type: String,
@@ -177,7 +175,12 @@ const userSchema = new mongoose.Schema(
                 }),
                 _id: false,     
             }
-        ]
+        ],
+
+        GOOGLE_SUB_ID: {
+            type: String,
+            required: false
+        }
     }
 )
 

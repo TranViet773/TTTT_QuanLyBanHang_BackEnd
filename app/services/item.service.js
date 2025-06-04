@@ -1,47 +1,103 @@
+const { pipeline } = require("nodemailer/lib/xoauth2/index.js");
 const Item = require("../models/Item.model.js");
 const ItemTypeModel = require("../models/ItemType.model.js");
 const UnitItemModel = require("../models/UnitItem.model.js");
+const { ObjectId } = require('mongodb');
+const uploadService = require('../services/upload.service.js');
 
-const getAllItems = async ({ page = 1, size = 10, search = '', itemTypeId = null, stock = null, isActive = null, itemCode = null, itemId = null }) => {
+
+const getAllItems = async ({
+  page = 1,
+  size = 10,
+  search = '',
+  itemTypeId = null,
+  stock = null,
+  isActive = null,
+  itemCode = null,
+  itemId = null,
+  minPrice = null,
+  maxPrice = null
+}) => {
   try {
-    const pageNumber = Math.max(parseInt(page), 1);
-    const limitNumber = Math.max(parseInt(size), 1);
+    const pageNumber = Math.max(parseInt(page) || 1, 1);
+    const limitNumber = Math.max(parseInt(size) || 10, 1);
+    // Xử lý minPrice và maxPrice nếu có
+    const minPriceNumber = minPrice !== null && minPrice !== undefined && minPrice !== '' ? parseInt(minPrice) : null;
+    const maxPriceNumber = maxPrice !== null && maxPrice !== undefined && maxPrice !== '' ? parseInt(maxPrice) : null;
+
     const skip = (pageNumber - 1) * limitNumber;
 
-    const matchStage = {};
-    if(itemCode) {
-        matchStage.ITEM_CODE = itemCode; // Ưu tiên tìm theo ITEM_CODE nếu có
-    }else{
-        if(itemId){
-            if (isActive != null) {
-                matchStage.IS_ACTIVE = isActive;
-            }
+    // Khởi tạo matchStage là một array để gom các điều kiện vào
+    const matchConditions = [];
 
-            if (itemTypeId != null) {
-                const itemType = await ItemTypeModel.findOne({ _id: itemTypeId });
-                if (!itemType) {
-                    return { error: "Item type not found" };
-                }
-                matchStage.ITEM_TYPE = itemType._id;
-            }
-
-            if (stock != null) {
-                const stockNumber = parseInt(stock);
-                matchStage["ITEM_STOCKS.QUANTITY"] = stockNumber;
-            }
-
-            if (search.trim() !== '') {
-                matchStage.$or = [
-                    { ITEM_NAME: { $regex: search, $options: 'i' } },
-                    { ITEM_CODE: { $regex: search, $options: 'i' } },
-                    { ITEM_NAME_EN: { $regex: search, $options: 'i' } }
-                ];
-            }
-        }
+    // Xử lý điều kiện giá
+    if (minPriceNumber !== null && maxPriceNumber !== null) {
+      matchConditions.push({ "lastPrice.PRICE_AMOUNT": { $gte: minPriceNumber, $lte: maxPriceNumber } });
+    } else if (minPriceNumber !== null) {
+      matchConditions.push({ "lastPrice.PRICE_AMOUNT": { $gte: minPriceNumber } });
+    } else if (maxPriceNumber !== null) {
+      matchConditions.push({ "lastPrice.PRICE_AMOUNT": { $lte: maxPriceNumber } });
     }
-    
 
+    // Nếu có itemCode thì ưu tiên tìm theo itemCode, không kết hợp với điều kiện khác
+    if (itemCode) {
+      matchConditions.push({ ITEM_CODE: itemCode });
+    } else {
+      // Nếu không có itemCode, thêm các điều kiện khác
+
+      if (itemId) {
+        // Nếu itemId dạng string, ép kiểu ObjectId nếu cần
+        matchConditions.push({ _id: new ObjectId(itemId) });
+      }
+
+      if (isActive !== null && isActive !== undefined && isActive !== '') {
+        // isActive có thể là string "true"/"false" hoặc boolean
+        const activeBool = (typeof isActive === 'string') ? (isActive.toLowerCase() === 'true') : Boolean(isActive);
+        matchConditions.push({ IS_ACTIVE: activeBool });
+      }
+
+      if (itemTypeId) {
+        // Kiểm tra tồn tại itemType trước khi thêm điều kiện
+        const itemType = await ItemTypeModel.findOne({ _id: itemTypeId });
+        if (!itemType) {
+          return { error: "Item type not found" };
+        }
+        matchConditions.push({ ITEM_TYPE: itemType._id });
+      }
+
+      if (stock !== null && stock !== undefined && stock !== '') {
+        const stockNumber = parseInt(stock);
+        if (stockNumber === 0) {
+          // Tồn kho = 0
+          matchConditions.push({ "ITEM_STOCKS.QUANTITY": 0 });
+        } else {
+          // Tồn kho > 0
+          matchConditions.push({ "ITEM_STOCKS.QUANTITY": { $gt: 0 } });
+        }
+      }
+
+      if (search && search.trim() !== '') {
+        // Nếu có từ khóa tìm kiếm thì thêm $or điều kiện tìm theo nhiều trường
+        matchConditions.push({
+          $or: [
+            { ITEM_NAME: { $regex: search, $options: 'i' } },
+            { ITEM_CODE: { $regex: search, $options: 'i' } },
+            { ITEM_NAME_EN: { $regex: search, $options: 'i' } }
+          ]
+        });
+      }
+    }
+
+    // Nếu không có điều kiện nào, match tất cả (match rỗng)
+    const matchStage = matchConditions.length > 0 ? { $and: matchConditions } : {};
+
+    // Pipeline aggregation
     const pipeline = [
+      {
+        $addFields: {
+          lastPrice: { $arrayElemAt: ["$PRICE", -1] }
+        }
+      },
       { $match: matchStage },
 
       // Lookup UNIT (ngoài)
@@ -115,6 +171,20 @@ const getAllItems = async ({ page = 1, size = 10, search = '', itemTypeId = null
           'BOM_MATERIALS.UNIT_ABB': { $arrayElemAt: ['$bom_unit_info.UNIT_ITEM_ABB', 0] }
         }
       },
+      // 🔥 Lookup ITEM_NAME qua BOM_MATERIALS.ITEM_CODE
+      {
+        $lookup: {
+          from: 'items', // Tên collection chứa item chính
+          localField: 'BOM_MATERIALS.ITEM_CODE', // Tham chiếu theo ITEM_CODE
+          foreignField: 'ITEM_CODE',             // Ghép theo ITEM_CODE
+          as: 'bom_item_info'
+        }
+      },
+      {
+        $addFields: {
+          'BOM_MATERIALS.ITEM_NAME': { $arrayElemAt: ['$bom_item_info.ITEM_NAME', 0] }
+        }
+      },
 
       // Group lại BOM_MATERIALS
       {
@@ -145,7 +215,28 @@ const getAllItems = async ({ page = 1, size = 10, search = '', itemTypeId = null
           ITEM_TYPE_NAME: '$item_type_info.ITEM_TYPE_NAME',
           UNIT_NAME: '$unit_info.UNIT_ITEM_NAME',
           PRICE: 1,
-          BOM_MATERIALS: 1
+          AVATAR_IMAGE_URL: 1,
+          LIST_IMAGE: 1,
+          DESCRIPTION: 1,
+          BOM_MATERIALS: {
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$BOM_MATERIALS', null] },
+                  { $eq: ['$BOM_MATERIALS', []] },
+                  {
+                    $and: [
+                      { $isArray: '$BOM_MATERIALS' },
+                      { $eq: [ { $size: '$BOM_MATERIALS' }, 1 ] },
+                      { $eq: [ { $objectToArray: { $arrayElemAt: ['$BOM_MATERIALS', 0] } }, [] ] }
+                    ]
+                  }
+                ]
+              },
+              then: null,
+              else: '$BOM_MATERIALS'
+            }
+          }
         }
       },
 
@@ -178,6 +269,7 @@ const getAllItems = async ({ page = 1, size = 10, search = '', itemTypeId = null
     return { error: error.message };
   }
 };
+
 
 const getItemByCode = async (code) => {
     try{
@@ -231,7 +323,17 @@ const createItem = async (itemData) => {
         bomMaterials
     } = itemData;
 
+    let BOM
 
+    if (bomMaterials) {
+      BOM = await createBOMMaterials(bomMaterials);
+    } else {
+      BOM = null
+    }
+
+    if(BOM?.error!=null){
+        return {error: BOM.error}
+    }
     const existingUnit = await UnitItemModel.findOne({ _id: unitId });
     if (!existingUnit) {
         return { error: "Unit not found!" };
@@ -273,7 +375,7 @@ const createItem = async (itemData) => {
             LAST_UPDATED: new Date(),
         },
         LIST_IMAGE: listImage,
-        BOM_MATERIALS: bomMaterials || null
+        BOM_MATERIALS: BOM || null
     };
 
     try {
@@ -283,10 +385,42 @@ const createItem = async (itemData) => {
         }
         return newItem;
     } catch (error) {
+        console.log(error)
         console.error("Lỗi khi tạo item:", error);
         return {error: "Error creating item"};
     }
 };
+
+const createBOMMaterials = async (BOMSData, itemId = null) => {
+    const updatedBOMData = []; // Mảng để lưu các BOM mới
+
+    for (const i of BOMSData) {
+      const item = await Item.findOne({ ITEM_CODE: i.ITEM_CODE });
+      if (item == null) return { error: "Nguyên liệu không tồn tại!" };
+      if (Number(i.QUANTITY) <= 0) return { error: "Số lượng không phù hợp" };
+
+      if (itemId != null) {
+          const itemInBOM = await Item.findOne({ _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE });
+          if (itemInBOM) {
+              // Nếu tồn tại, tăng số lượng
+              await Item.updateOne(
+                  { _id: itemId, "BOM_MATERIALS.ITEM_CODE": i.ITEM_CODE },
+                  { $inc: { "BOM_MATERIALS.$.QUANTITY": Number(i.QUANTITY) } }
+              );
+              continue; // Bỏ item này ra khỏi danh sách mới thêm
+          }
+      }
+
+      // Gán các giá trị bổ sung cho BOM mới
+      i.UNIT = item.UNIT;
+      i.FROM_DATE = new Date();
+      i.THRU_DATE = new Date();
+        updatedBOMData.push(i); // Thêm vào danh sách các BOM mới
+    }
+
+    return updatedBOMData; // Chỉ chứa BOM mới cần thêm
+};
+
 
 const updateItem = async (id, itemData) => {
     try {
@@ -365,12 +499,7 @@ const updateItemPrice = async (id, priceData) => { //Chưa check
 
 const addBOMMaterialToItem = async (id, bomMaterials) => { //Chueac check
     try {
-                console.log("bomMaterials:", bomMaterials);
-
-        const isExistingUnit = await UnitItemModel.findOne({ _id: bomMaterials.unitId });
-        if(!isExistingUnit) {
-            return {error: "Unit not found!"};
-        }
+        console.log("bomMaterials:", bomMaterials);
 
         //Kiểm tra xem item có tồn tại không.
         const existingItem = await Item.findById(id);
@@ -379,21 +508,16 @@ const addBOMMaterialToItem = async (id, bomMaterials) => { //Chueac check
         }
 
         //Kiểm tra xem BomMaterials (Nguyên liệu) có tồn tại không.
-        const existingBomMaterial = Item.findOne({ITEM_CODE: bomMaterials.itemCode});  
-        console.log("existingBomMaterial:", existingBomMaterial); 
-        if (!existingBomMaterial || bomMaterials.quantity < 0) {
-            return {error: "BOM material not found or Quantity less than 0!"};
+        const BOM = await createBOMMaterials(bomMaterials, id); 
+        console.log("BOM",BOM)
+        if(BOM.error!=null){
+            return {error: BOM.error}
         }
-        
         const updatedItem = await Item.findByIdAndUpdate(id,
             { 
                 $push: {
                     BOM_MATERIALS: {
-                        ITEM_CODE: bomMaterials.itemCode,
-                        QUANTITY: bomMaterials.quantity,
-                        UNIT: bomMaterials.unitId,
-                        FROM_DATE: new Date(),
-                        THRU_DATE: null
+                        $each: BOM
                     }
                 },
                 UPDATED_AT: new Date()
@@ -475,6 +599,14 @@ const removeBOMMaterialFromItem = async (id, itemCode) => {
 
 const deleteItem = async (id) => {
     try {
+        const item = await Item.findById({_id: id});
+        const listImage = item.LIST_IMAGE;
+        console.log("List image: ", listImage);
+
+        for (const element of listImage) {
+            const deletefile = await uploadService.handleDeleteFile(element.URL);
+        }
+        console.log("Xóa oke rồi nè")
         const deletedItem = await Item.findByIdAndDelete(id);
         if (!deletedItem) {
             return {error: "Item not found"};

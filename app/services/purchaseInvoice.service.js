@@ -4,7 +4,7 @@ const Account = require("../models/Account.model")
 const Item = require("../models/Item.model")
 const User = require("../models/User.model")
 const authHelper = require("../helpers/auth.helper")
-const mongoose = require("mongoose")
+const { ObjectId } = require('mongodb')
 
 const handleInvoiceDataForResponse = async (invoice) => {
     console.log(invoice)
@@ -188,7 +188,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, userId, fromDate, toDate} = query
+        const {page, limit, search, userId, fromDate, toDate, isImported} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -228,8 +228,22 @@ const getAllInvoices = async (query) => {
         }
 
         if (userId?.trim()) {
-            matchConditions.push({IMPORTED_BY: userId})
+            matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
             console.log("thêm user id")
+        }
+
+        if (isImported?.trim()) {
+            if (isImported === 'false') {
+                matchConditions.push({
+                    'ITEMS.SUPPLIER_ID': null       // lọc bản ghi null hoặc không tồn tại
+                })
+            }
+
+            if (isImported === 'true') {
+                matchConditions.push({
+                    'ITEMS.SUPPLIER_ID': { $ne: null, $exists: true }   // lọc bản ghi có tồn tại và không null
+                })
+            }
         }
 
         if (fromDate?.trim()) {
@@ -316,9 +330,16 @@ const getAllInvoices = async (query) => {
     
 }
 
-const getInvoiceByCode = async (invoiceCode) => {
+const getInvoiceByCode = async (invoiceCode, user) => {
     try {
         const invoice = await PurchaseInvoice.findOne({INVOICE_CODE: invoiceCode})
+
+        console.log(invoice)
+
+        if (user.IS_CUSTOMER && user.USER_ID != invoice.IMPORTED_BY) {
+            return ({ error: "Hóa đơn không tồn tại hoặc không có quyền truy cập." })
+        }
+
         return await handleInvoiceDataForResponse(invoice)
     } catch (error) {
         throw new Error("Lỗi khi truy vấn dữ liệu hóa đơn.")
@@ -397,6 +418,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 addItem.UNIT = price.UNIT
                 addItem.UNIT_PRICE = price.PRICE_AMOUNT
                 addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
+                addItem.SUPPLIER_ID = null
 
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
@@ -508,8 +530,14 @@ const createInvoice = async (data) => {
         else {
             for(const addItem of items) {
                 
-                if (!addItem.SUPPLIER_ID || !await Supplier.findById(addItem.SUPPLIER_ID)) {
-                    return ({ error: `Không tìm thấy nhà cung cấp của item ${addItem.ITEM_CODE}` })
+                if (isImportedInvoice) {
+                    if (!addItem.SUPPLIER_ID || !await Supplier.findById(addItem.SUPPLIER_ID)) {
+                        return ({ error: `Không tìm thấy nhà cung cấp của item ${addItem.ITEM_CODE}` })
+                    }
+                }
+
+                else {
+                    addItem.SUPPLIER_ID = null
                 }
                         
 
@@ -584,7 +612,7 @@ const createInvoice = async (data) => {
 }
 
 const updateInvoiceStatus = async (data) => {
-    const {invoiceCode, statusName, isImportedInvoice} = data
+    const {invoiceCode, statusName, isImportedInvoice, userId, isCustomer} = data
     const now = new Date()
     let count = 0       // đếm document
 
@@ -592,6 +620,11 @@ const updateInvoiceStatus = async (data) => {
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
+    }
+
+    
+    if (userId !== invoice.IMPORTED_BY && isCustomer) {
+        return ({error: "Người dùng không có quyền cập nhật trạng thái hóa đơn."})
     }
 
     let statusFlag = false
@@ -684,6 +717,10 @@ const updateInvoiceStatus = async (data) => {
     } catch (error) {
         throw new Error(error)
     }
+}
+
+const staticInvoice = async () => {
+
 }
 
 module.exports = {

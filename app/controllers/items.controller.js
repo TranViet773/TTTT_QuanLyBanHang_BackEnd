@@ -49,7 +49,10 @@ const createItem = async (req, res) => {
     const itemData = req.body;
     try {
         const newItem = await itemService.createItem(itemData);
-        if(newItem.error) {
+        console.log(newItem)
+        console.log("flag")
+        if(newItem?.error) {
+
             return res.status(400).json({
                 success: false,
                 message: "Error creating item",
@@ -202,14 +205,9 @@ const updateItemPrice = async (req, res) => {
 
 const addBOMMaterialToItem = async (req, res) => {
     const { id } = req.params;//itemId
-    const { itemCode, quantity, unitId } = req.body;
-    const bomMaterials = {
-        itemCode: itemCode,
-        quantity: quantity,
-        unitId: unitId,
-    };
+    
     try {
-        const updatedItem = await itemService.addBOMMaterialToItem(id, bomMaterials);
+        const updatedItem = await itemService.addBOMMaterialToItem(id, req.body);
         if (updatedItem.error) {
             return res.status(404).json({
                 success: false,
