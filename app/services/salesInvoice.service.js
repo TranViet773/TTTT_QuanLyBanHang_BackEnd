@@ -447,7 +447,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
 }
 
 const createInvoice = async (data) => {
-    const {soldBy, status, note, items, voucherGlobalId, tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+    const {status, note, items, voucherGlobalId, tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
 
 
     try {
@@ -507,7 +507,7 @@ const createInvoice = async (data) => {
                                 return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                             }
 
-                            if ()
+                            // if (voucherHelper.isVoucherAvailable(voucher))
                         }
 
                         addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
@@ -520,32 +520,55 @@ const createInvoice = async (data) => {
             }
         }
 
+        const taxValue = tax ? totalAmount * tax / 100 : 0
+
+        if (voucherGlobalId) {
+            const voucher = await Voucher.findById(voucherGlobalId)
+
+            if (!voucher) {
+                return { error: "Voucher không tồn tại." }
+            }
+
+            // update
+
+            if (voucher.TYPE === 'PERCENTAGE') {
+                const discount = total * voucher.value / 100
+
+                totalAmount = discount < voucher.MAX_DISCOUNT ? totalAmount - discount : totalAmount - voucher.MAX_DISCOUNT
+            }
+
+            else {
+                totalAmount = voucher.VALUE < voucher.MAX_DISCOUNT ? totalAmount - voucher.VALUE  : totalAmount - voucher.MAX_DISCOUNT
+            }
+
+            totalAmount = totalAmount < 0 ? 0 : totalAmount
+        }
+
+
         const invoiceData = {
             INVOICE_CODE: now.getTime(),
-            IMPORT_DATE: now,
-            IMPORTED_BY: importedBy,
-            STATUS: [
-                {
-                    STATUS_NAME: statusName,
-                    FROM_DATE: now,
-                    THRU_DATE: null,
-                }
-            ],
+            CUSTOMER_ID: customerId,
+            SELL_DATE: now,
+            SOLD_BY: soldBy,
+            STATUS: statusName,
+            NOTE: note,
+            ITEMS: items,
             TOTAL_AMOUNT: totalAmount,
+            VOUCHER_GLOBAL_ID: voucherGlobalId,
+            TAX: tax,
             EXTRA_FEE: extraFee,
             EXTRA_FEE_UNIT: extraFeeUnit,
             EXTRA_FEE_NOTE: extraFeeNote,
-            TAX: tax,
-            TOTAL_WITH_TAX_EXTRA_FEE: tax && extraFee ? totalAmount + totalAmount * (tax/100)  + extraFee :
-                                        tax && !extraFee ? totalAmount + totalAmount * (tax/100) :
-                                        !tax && extraFee ? totalAmount + extraFee : totalAmount,
-            ITEMS: items,
-            PAYMENTED: paymented
+            TOTAL_WITH_TAX_EXTRA_FEE: extraFee ? totalAmount + taxValue + extraFee : totalAmount + taxValue,         
+            PAYMENT_METHOD: paymentMethod,
+            PURCHASE_METHOD: purchaseMethod,
+            CREATED_AT: now,
+            UPDATED_AT: null,
         }
 
         const invoice = await (async () => {
             try {
-                return await (new PurchaseInvoice(invoiceData)).save()
+                return await (new SalesInvoices(invoiceData)).save()
             } catch (error) {
                 if (statusName === 'CONFIRMED' || statusName === 'PAYMENTED') {
                     invoiceHelper.rollbackItems(count, originalItems, backupItems)
@@ -565,8 +588,11 @@ const createInvoice = async (data) => {
     }
 }
 
+
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
+    createInvoice,
 
 }

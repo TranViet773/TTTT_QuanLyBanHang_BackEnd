@@ -297,17 +297,6 @@ const getInvoiceByCode = async (invoiceCode, user) => {
     }
 } 
 
-const rollbackItems = async (count, originalItems, backupItems) => {
-    if (count > 0) {
-        for(let i=0; i < count; i++) {
-            originalItems[i].ITEM_STOCKS.QUANTITY = backupItems[i].ITEM_STOCKS.QUANTITY
-            originalItems[i].ITEM_STOCKS.LAST_UPDATED = backupItems[i].ITEM_STOCKS.LAST_UPDATED
-            
-            await originalItems[i].save()
-        }
-    }
-}
-
 const updateItemForImporting = async (items, originalItems, backupItems, now) => {
         
     let totalAmount = 0     // tổng tiền hàng của hóa đơn
@@ -321,7 +310,7 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
 
         // kiểm tra nhà cung cấp có tồn tại
         if(!await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
-            rollbackItems(count, originalItems, backupItems)
+            invoiceHelper.rollbackItems(count, originalItems, backupItems)
             return({error: "Nhà cung cấp không tồn tại."})
         }
         
@@ -342,7 +331,7 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
                     count++
                     break
                 } catch (error) {
-                    rollbackItems(count, originalItems, backupItems)
+                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
 
                     console.log(error.message)
                     throw new Error("Cập nhật số lượng item thất bại.")
@@ -448,7 +437,7 @@ const createInvoice = async (data) => {
                 return await (new PurchaseInvoice(invoiceData)).save()
             } catch (error) {
                 if (statusName === 'CONFIRMED' || statusName === 'PAYMENTED') {
-                    rollbackItems(count, originalItems, backupItems)
+                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
                 }
                 console.log(error.message)
                 return null
@@ -547,7 +536,7 @@ const updateInvoiceStatus = async (data) => {
 
         } catch (error) {
 
-            rollbackItems(count, originalItems, backupItems)
+            invoiceHelper.rollbackItems(count, originalItems, backupItems)
 
             console.log(error)
             throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
