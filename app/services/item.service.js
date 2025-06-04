@@ -3,6 +3,8 @@ const Item = require("../models/Item.model.js");
 const ItemTypeModel = require("../models/ItemType.model.js");
 const UnitItemModel = require("../models/UnitItem.model.js");
 const { ObjectId } = require('mongodb');
+const uploadService = require('../services/upload.service.js');
+
 
 const getAllItems = async ({
   page = 1,
@@ -213,7 +215,28 @@ const getAllItems = async ({
           ITEM_TYPE_NAME: '$item_type_info.ITEM_TYPE_NAME',
           UNIT_NAME: '$unit_info.UNIT_ITEM_NAME',
           PRICE: 1,
-          BOM_MATERIALS: 1
+          AVATAR_IMAGE_URL: 1,
+          LIST_IMAGE: 1,
+          DESCRIPTION: 1,
+          BOM_MATERIALS: {
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$BOM_MATERIALS', null] },
+                  { $eq: ['$BOM_MATERIALS', []] },
+                  {
+                    $and: [
+                      { $isArray: '$BOM_MATERIALS' },
+                      { $eq: [ { $size: '$BOM_MATERIALS' }, 1 ] },
+                      { $eq: [ { $objectToArray: { $arrayElemAt: ['$BOM_MATERIALS', 0] } }, [] ] }
+                    ]
+                  }
+                ]
+              },
+              then: null,
+              else: '$BOM_MATERIALS'
+            }
+          }
         }
       },
 
@@ -576,6 +599,14 @@ const removeBOMMaterialFromItem = async (id, itemCode) => {
 
 const deleteItem = async (id) => {
     try {
+        const item = await Item.findById({_id: id});
+        const listImage = item.LIST_IMAGE;
+        console.log("List image: ", listImage);
+
+        for (const element of listImage) {
+            const deletefile = await uploadService.handleDeleteFile(element.URL);
+        }
+        console.log("Xóa oke rồi nè")
         const deletedItem = await Item.findByIdAndDelete(id);
         if (!deletedItem) {
             return {error: "Item not found"};

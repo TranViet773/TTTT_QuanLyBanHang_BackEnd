@@ -4,7 +4,7 @@ const AccountDevice = require("../models/AccountDevice.model");
 const authService = require("../services/auth.service");
 const authHelper = require("../helpers/auth.helper");
 const { isValidInfo } = require("../helpers/auth.helper");
-
+const { ObjectId } = require('mongodb');
 const { generateKeyPairSync } = require("crypto");
 const ms = require("ms");
 const { addTokenToBlacklist } = require("../utils/tokenBlacklist");
@@ -102,6 +102,7 @@ const handleUserDataForResponse = (user, account, device) => {
         DEVICE_NAME: device.NAME_DEVICE || "",
         LAST_TIME_LOGIN: device.LAST_TIME_LOGIN,
       },
+      GOOGLE_SUB_ID: user.GOOGLE_SUB_ID,
       ACCESS_TOKEN_EXPIRY: new Date(
         Date.now() + ms(process.env.ACCESS_TOKEN_EXPIRY)
       ).toISOString(),
@@ -127,10 +128,11 @@ const handleCreateUser = async (data) => {
     gender,
     avatar,
     email,
-    dob,
+    dob = null,
     lastName,
     middleName,
     firstName,
+    fullName,
     country,
     city,
     district,
@@ -147,9 +149,10 @@ const handleCreateUser = async (data) => {
     isManager,
     isServiceStaff,
     createByUserId,
+    subId
   } = data;
 
-  console.log(data);
+  console.log("Handle create user",data);
 
   let role = {};
 
@@ -168,14 +171,14 @@ const handleCreateUser = async (data) => {
       IS_CUSTOMER: true,
     };
   }
-
+    
     const userData = {
         LIST_NAME: [
             {
                 LAST_NAME: lastName,
                 FIRST_NAME: firstName,
                 MIDDLE_NAME: middleName,
-                FULL_NAME: `${lastName} ${firstName}`,
+                FULL_NAME: lastName && firstName ? `${lastName} ${firstName}` : lastName ? lastName : firstName,
                 FROM_DATE: new Date(),
                 THRU_DATE: null,
             }
@@ -191,36 +194,25 @@ const handleCreateUser = async (data) => {
                 THRU_DATE: null,
             }
         ],
-        LIST_ADDRESS: [
-            {   
-                COUNTRY: country,
-                CITY: city,
-                DISTRICT: district,
-                WARD: ward,
-                ADDRESS_1: address1,
-                ADDRESS_2: address2,
-                STATE: state,
-                FROM_DATE: new Date(),
-                THRU_DATE: null
-            }
-        ],
-        LIST_PHONE_NUMBER: [
-            {
-                COUNTRY_CODE: countryCode,
-                COUNTRY_NAME: countryName,
-                AREA_CODE: areaCode,
-                PHONE_NUMBER: phoneNumber,
-                FULL_PHONE_NUMBER: fullPhoneNumber,
-                FROM_DATE: new Date(),
-                THRU_DATE: null,
-            }
-        ],
+        // LIST_ADDRESS: [
+        //     {   
+        //         COUNTRY: country,
+        //         CITY: city,
+        //         DISTRICT: district,
+        //         WARD: ward,
+        //         ADDRESS_1: address1,
+        //         ADDRESS_2: address2,
+        //         STATE: state,
+        //         FROM_DATE: new Date(),
+        //         THRU_DATE: null
+        //     }
+        // ],
         LIST_CONTACT: [
             {
                 LAST_NAME: lastName,
                 FIRST_NAME: firstName,
                 MIDDLE_NAME: middleName,
-                FULL_NAME: `${lastName} ${firstName}`,
+                FULL_NAME: fullName || `${lastName} ${firstName}`,
                 PHONE_NUMBER: fullPhoneNumber,
                 ADDRESS_1: address1,
                 ADDRESS_2: address2,
@@ -234,9 +226,33 @@ const handleCreateUser = async (data) => {
                 FROM_DATE: new Date(),
                 THRU_DATE: null,
             }
-        ]
+        ],
+
+        GOOGLE_SUB_ID: subId || null
     };
 
+    if(countryCode) userData.LIST_PHONE_NUMBER = [
+            {
+                COUNTRY_CODE: countryCode,
+                COUNTRY_NAME: countryName,
+                AREA_CODE: areaCode,
+                PHONE_NUMBER: phoneNumber,
+                FULL_PHONE_NUMBER: fullPhoneNumber,
+                FROM_DATE: new Date(),
+                THRU_DATE: null,
+            }
+        ];
+    if(country) userData.LIST_ADDRESS = [{   
+                COUNTRY: country,
+                CITY: city,
+                DISTRICT: district,
+                WARD: ward,
+                ADDRESS_1: address1,
+                ADDRESS_2: address2,
+                STATE: state,
+                FROM_DATE: new Date(),
+                THRU_DATE: null
+            }];
 
 
   let user = new User();
@@ -252,18 +268,18 @@ const handleCreateUser = async (data) => {
       CREATE_BY_USER_ID: createByUserId,
       FROM_DATE: new Date(),
       THRU_DATE: null,
-      USER_ID: user._id,
+      USER_ID: new ObjectId(user._id),
     };
 
     const account = await Account.create(accountData);
 
     // Tạo đối tượng account device
     const accountDeviceData = {
-      USER_ID: user._id,
+      USER_ID: new ObjectId(user._id),
     };
 
     const accountDevice = await AccountDevice.create(accountDeviceData);
-
+    console.log("AccountDevice: ", accountDevice);
     if (createByUserId) {
       return {
         username: username,
@@ -344,9 +360,9 @@ const loginDevice = async (
 };
 
 const login = async (data) => {
-  const { username, email, password, deviceId, deviceName, deviceType } = data;
-
-  if ((!username || !email) && !password) {
+  const { username, email, password, deviceId, deviceName, deviceType, isGoogle = false } = data; // Việt thêm vào để tái sử dụng cho chức năng loginGG
+  console.log({ username, email, password, deviceId, deviceName, deviceType, isGoogle });
+  if ((!username && !email) || (!isGoogle && !password)) {
     return { error: "Vui lòng nhập đầy đủ thông tin đăng nhập." };
   }
 
@@ -377,7 +393,7 @@ const login = async (data) => {
       }
 
       // So sánh password
-      if (!(await authService.isMatchedPassword(password, account.PASSWORD))) {
+      if (!isGoogle && !(await authService.isMatchedPassword(password, account.PASSWORD))) {
         return { error: "Sai mật khẩu." };
       }
 
@@ -940,6 +956,78 @@ const rollbackCreatingStaffUser = async (id) => {
     }
 }
 
+const handleGoogleLogin = async (token, deviceId) => {
+  const payload = await authService.verifyTokenOAuth2(token);
+  const { email, sub, name, family_name, picture, given_name, iat, exp } = payload;
+  const expDate = new Date(exp*1000);
+  const now = new Date();
+  if(expDate < now) return {error: "Hết thời gian đăng nhập bằng Google!"};
+
+  //console.log("Payload from token google: ", payload);
+  let userExisting = await User.findOne({"LIST_EMAIL.EMAIL": email});
+  console.log("userExisting",userExisting);
+  if(userExisting){
+    //Kiểm tra email còn hợp lệ không.
+    const emailValid = authHelper.isValidInfo(userExisting.LIST_EMAIL);
+    if(emailValid.EMAIL != email) return {error: "Email không còn hợp lệ!"};
+
+    if((userExisting.GOOGLE_SUB_ID && userExisting.GOOGLE_SUB_ID != sub) || !userExisting.GOOGLE_SUB_ID){
+      return {error: "Tài khoản đã được đăng ký bằng một phương thức khác!"}
+    }
+
+    if(userExisting.GOOGLE_SUB_ID == sub)
+    {
+      const data = {
+        email: email, 
+        deviceId: deviceId, 
+        isGoogle: true
+      }
+      const response = await login(data);
+      if(response.error) return {error: error};
+      return response;
+    }
+  };
+  
+  //Tạo tài khoản mới.
+  const newUserData = {
+    username: email,
+    password: "Google123!",
+    gender: "Khác",
+    avatar: picture,
+    email: email,
+    fullName: name,
+    isManager: false,
+    dob: null,
+    subId: sub,
+    lastName: family_name,
+    firstName: given_name,
+    // countryCode: '+84',
+    // countryName: null,
+    // areaCode: '28',
+    // phoneNumber: '0123456789',
+    // fullPhoneNumber: '+840123456789'
+  };
+  
+  try{
+    console.log("data: ", newUserData);
+    await handleCreateUser(newUserData);
+    //tiến hành đăng nhập
+    const data = {
+        email: email, 
+        deviceId: deviceId, 
+        isGoogle: true
+      }
+    const response = await login(data);
+    if(response.error) return {error: error};
+    return response;
+  }catch(error){
+    console.log("Lỗi khi đăng nhập bằng tài khoản Google: ", error);
+    return {error: "Lỗi khi đăng nhập bằng tài khoản Google!"};
+  }
+
+  // thuejc hiện đăng nhập 
+};
+
 module.exports = {
   handleCreateUser,
   rollbackCreatingStaffUser,
@@ -953,4 +1041,5 @@ module.exports = {
   handleUpdateRoleForUser,
   handleGetUserById,
   resetPassword,
+  handleGoogleLogin
 };

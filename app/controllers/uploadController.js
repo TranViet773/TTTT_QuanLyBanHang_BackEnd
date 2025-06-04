@@ -1,35 +1,40 @@
-const uploadService = require('../services/upload.service');
-const multer = require('multer');
+const uploadService = require("../services/upload.service");
+const multer = require("multer");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-const uploadImgage = async (req, res) => {
+const uploadImage = async (req, res) => {
   try {
     const { type, id, oldFileUrl } = req.body;
-
-    const result = await uploadService.handleUploadImage(req.file, type, id, oldFileUrl);
+    const result = await uploadService.handleUploadImage(
+      req.file,
+      type,
+      id,
+      oldFileUrl
+    );
+    console.log(result);
     if (result.error) {
       return res.status(400).json({
         success: false,
         message: result.error,
-        data: null
+        data: null,
       });
     }
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       message: "Upload image successfully",
-      data: { url: result.url }
+      data: { url: result.url },
     });
   } catch (error) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: result.error,
-      data: null 
+      data: null,
     });
   }
 };
 
-const uploadImgages = async (req, res) => {
+const uploadImages = async (req, res) => {
   try {
     const { type, id } = req.body;
 
@@ -38,19 +43,19 @@ const uploadImgages = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: result.error,
-        data: null
+        data: null,
       });
     }
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       message: "Upload image successfully",
-      data: { urls: result.urls }
+      data: { urls: result.urls },
     });
   } catch (error) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: result.error,
-      data: null 
+      data: null,
     });
   }
 };
@@ -64,25 +69,25 @@ const deleteFile = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: result.error,
-        data: null
+        data: null,
       });
     }
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       message: "Delete file successfully",
-      data: { message: result.message }
+      data: { message: result.message },
     });
   } catch (error) {
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: error.message,
-      data: null 
+      data: null,
     });
   }
-}
+};
 
 module.exports = {
-    uploadImgage,
-    uploadImgages,
-    deleteFile
-}
+  uploadImage,
+  uploadImages,
+  deleteFile,
+};

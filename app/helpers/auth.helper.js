@@ -27,13 +27,13 @@ const isValidInfo = (listInfo) => {
 const getSecretKey = async (userId, deviceId) => {
     const accountDevice = await AccountDeviceModel.findOne({ USER_ID: userId});
     if(!accountDevice) {
-        return {error: "Thiết bị không hợp lệ 0"};
+        return {error: "Không tìm thấy device nào của người dùng!"};
     }
     
    const device = accountDevice.LIST_DEVICE_OF_ACCOUNT.find(device => device.ID_DEVICE === deviceId);
 
   if (!device) {
-        return {error: "Thiết bị không hợp lệ 2"};
+        return {error: "Người dùng chưa có thông tin thiết bị!"};
     }
 
     return {privateKey: device.PRIVATE_KEY, publicKey: device.PUBLIC_KEY};
