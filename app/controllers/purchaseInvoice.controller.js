@@ -1,4 +1,4 @@
-const purchaseInvoiceService = require('../services/salesInvoice.service')
+const purchaseInvoiceService = require('../services/purchaseInvoice.service')
 
 const getAllInvoices = async (req, res) => {
     try {
