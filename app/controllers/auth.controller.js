@@ -3,6 +3,7 @@ const authService = require('../services/auth.service');
 const User = require('../models/User.model')
 const Account = require("../models/Account.model")
 const jwt = require('jsonwebtoken');
+const ms = require('ms')
 
 const register = async (req, res) => {
     try{
@@ -137,14 +138,14 @@ const login = async (req, res) => {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
                 sameSite: 'Lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
-                maxAge: 15 * 60 * 1000 // 15 phút
+                maxAge: ms(process.env.ACCESS_TOKEN_EXPIRY) // 15 phút
             });
 
             res.cookie('refreshToken', response.refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'Lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
+                maxAge: ms(process.env.REFRESH_TOKEN_EXPIRY) // 7 ngày
             });
             res.status(201).json({
                 success: true,
@@ -347,14 +348,14 @@ const googleLogin = async (req, res) => {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production', // chỉ gửi qua HTTPS
                 sameSite: 'Lax', // hoặc 'Lax' nếu muốn linh hoạt hơn
-                maxAge: 15 * 60 * 1000 // 15 phút
+                maxAge: ms(process.env.ACCESS_TOKEN_EXPIRY) // 15 phút
             });
 
             res.cookie('refreshToken', response.refreshToken, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'Lax',
-                maxAge: 7 * 24 * 60 * 60 * 1000 // 7 ngày
+                maxAge: ms(process.env.REFRESH_TOKEN_EXPIRY) // 7 ngày
             });
             res.status(201).json({
                 success: true,

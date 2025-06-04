@@ -4,7 +4,7 @@ const AccountDevice = require("../models/AccountDevice.model");
 const authService = require("../services/auth.service");
 const authHelper = require("../helpers/auth.helper");
 const { isValidInfo } = require("../helpers/auth.helper");
-const { ObjectId } = require('mongodb');
+const { ObjectId } = require("mongodb");
 const { generateKeyPairSync } = require("crypto");
 const ms = require("ms");
 const { addTokenToBlacklist } = require("../utils/tokenBlacklist");
@@ -149,10 +149,10 @@ const handleCreateUser = async (data) => {
     isManager,
     isServiceStaff,
     createByUserId,
-    subId
+    subId,
   } = data;
 
-  console.log("Handle create user",data);
+  console.log("Handle create user", data);
 
   let role = {};
 
@@ -171,89 +171,97 @@ const handleCreateUser = async (data) => {
       IS_CUSTOMER: true,
     };
   }
-    
-    const userData = {
-        LIST_NAME: [
-            {
-                LAST_NAME: lastName,
-                FIRST_NAME: firstName,
-                MIDDLE_NAME: middleName,
-                FULL_NAME: lastName && firstName ? `${lastName} ${firstName}` : lastName ? lastName : firstName,
-                FROM_DATE: new Date(),
-                THRU_DATE: null,
-            }
-        ],
-        CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
-        BIRTH_DATE: dob === null ? null : new Date(dob),
-        AVATAR_IMG_URL: avatar || '',
-        ROLE: role,
-        LIST_EMAIL: [
-            {
-                EMAIL: email,
-                FROM_DATE: new Date(),
-                THRU_DATE: null,
-            }
-        ],
-        // LIST_ADDRESS: [
-        //     {   
-        //         COUNTRY: country,
-        //         CITY: city,
-        //         DISTRICT: district,
-        //         WARD: ward,
-        //         ADDRESS_1: address1,
-        //         ADDRESS_2: address2,
-        //         STATE: state,
-        //         FROM_DATE: new Date(),
-        //         THRU_DATE: null
-        //     }
-        // ],
-        LIST_CONTACT: [
-            {
-                LAST_NAME: lastName,
-                FIRST_NAME: firstName,
-                MIDDLE_NAME: middleName,
-                FULL_NAME: fullName || `${lastName} ${firstName}`,
-                PHONE_NUMBER: fullPhoneNumber,
-                ADDRESS_1: address1,
-                ADDRESS_2: address2,
-                EMAIL: email,
-                WARD: ward,
-                DISTRICT: district,
-                CITY: city,
-                STATE: state,
-                COUNTRY: country,
-                RELATIONSHIP: relationship,
-                FROM_DATE: new Date(),
-                THRU_DATE: null,
-            }
-        ],
 
-        GOOGLE_SUB_ID: subId || null
-    };
+  const userData = {
+    LIST_NAME: [
+      {
+        LAST_NAME: lastName,
+        FIRST_NAME: firstName,
+        MIDDLE_NAME: middleName,
+        FULL_NAME:
+          lastName && firstName
+            ? `${lastName} ${firstName}`
+            : lastName
+            ? lastName
+            : firstName,
+        FROM_DATE: new Date(),
+        THRU_DATE: null,
+      },
+    ],
+    CURRENT_GENDER: gender, // 'Nam', 'Nữ', 'Khác'
+    BIRTH_DATE: dob === null ? null : new Date(dob),
+    AVATAR_IMG_URL: avatar || "",
+    ROLE: role,
+    LIST_EMAIL: [
+      {
+        EMAIL: email,
+        FROM_DATE: new Date(),
+        THRU_DATE: null,
+      },
+    ],
+    // LIST_ADDRESS: [
+    //     {
+    //         COUNTRY: country,
+    //         CITY: city,
+    //         DISTRICT: district,
+    //         WARD: ward,
+    //         ADDRESS_1: address1,
+    //         ADDRESS_2: address2,
+    //         STATE: state,
+    //         FROM_DATE: new Date(),
+    //         THRU_DATE: null
+    //     }
+    // ],
+    LIST_CONTACT: [
+      {
+        LAST_NAME: lastName,
+        FIRST_NAME: firstName,
+        MIDDLE_NAME: middleName,
+        FULL_NAME: fullName || `${lastName} ${firstName}`,
+        PHONE_NUMBER: fullPhoneNumber,
+        ADDRESS_1: address1,
+        ADDRESS_2: address2,
+        EMAIL: email,
+        WARD: ward,
+        DISTRICT: district,
+        CITY: city,
+        STATE: state,
+        COUNTRY: country,
+        RELATIONSHIP: relationship,
+        FROM_DATE: new Date(),
+        THRU_DATE: null,
+      },
+    ],
 
-    if(countryCode) userData.LIST_PHONE_NUMBER = [
-            {
-                COUNTRY_CODE: countryCode,
-                COUNTRY_NAME: countryName,
-                AREA_CODE: areaCode,
-                PHONE_NUMBER: phoneNumber,
-                FULL_PHONE_NUMBER: fullPhoneNumber,
-                FROM_DATE: new Date(),
-                THRU_DATE: null,
-            }
-        ];
-    if(country) userData.LIST_ADDRESS = [{   
-                COUNTRY: country,
-                CITY: city,
-                DISTRICT: district,
-                WARD: ward,
-                ADDRESS_1: address1,
-                ADDRESS_2: address2,
-                STATE: state,
-                FROM_DATE: new Date(),
-                THRU_DATE: null
-            }];
+    GOOGLE_SUB_ID: subId || null,
+  };
 
+  if (countryCode)
+    userData.LIST_PHONE_NUMBER = [
+      {
+        COUNTRY_CODE: countryCode,
+        COUNTRY_NAME: countryName,
+        AREA_CODE: areaCode,
+        PHONE_NUMBER: phoneNumber,
+        FULL_PHONE_NUMBER: fullPhoneNumber,
+        FROM_DATE: new Date(),
+        THRU_DATE: null,
+      },
+    ];
+  if (country)
+    userData.LIST_ADDRESS = [
+      {
+        COUNTRY: country,
+        CITY: city,
+        DISTRICT: district,
+        WARD: ward,
+        ADDRESS_1: address1,
+        ADDRESS_2: address2,
+        STATE: state,
+        FROM_DATE: new Date(),
+        THRU_DATE: null,
+      },
+    ];
 
   let user = new User();
   try {
@@ -360,8 +368,24 @@ const loginDevice = async (
 };
 
 const login = async (data) => {
-  const { username, email, password, deviceId, deviceName, deviceType, isGoogle = false } = data; // Việt thêm vào để tái sử dụng cho chức năng loginGG
-  console.log({ username, email, password, deviceId, deviceName, deviceType, isGoogle });
+  const {
+    username,
+    email,
+    password,
+    deviceId,
+    deviceName,
+    deviceType,
+    isGoogle = false,
+  } = data; // Việt thêm vào để tái sử dụng cho chức năng loginGG
+  console.log({
+    username,
+    email,
+    password,
+    deviceId,
+    deviceName,
+    deviceType,
+    isGoogle,
+  });
   if ((!username && !email) || (!isGoogle && !password)) {
     return { error: "Vui lòng nhập đầy đủ thông tin đăng nhập." };
   }
@@ -393,7 +417,10 @@ const login = async (data) => {
       }
 
       // So sánh password
-      if (!isGoogle && !(await authService.isMatchedPassword(password, account.PASSWORD))) {
+      if (
+        !isGoogle &&
+        !(await authService.isMatchedPassword(password, account.PASSWORD))
+      ) {
         return { error: "Sai mật khẩu." };
       }
 
@@ -532,37 +559,40 @@ const handleForgotPassword = async (data) => {
     return { error: "Email chưa được đăng ký" };
   }
 
-    if (! await authHelper.isValidEmail(user, data.email)) {
-        return {error: "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký."}
-    }
+  if (!(await authHelper.isValidEmail(user, data.email))) {
+    return {
+      error:
+        "Email đã được thay đổi. Vui lòng nhập email bạn đang dùng để đăng ký.",
+    };
+  }
 
-    data.userId = user._id
-    data.firstName = user.FIRST_NAME || ''
+  data.userId = user._id;
+  data.firstName = user.FIRST_NAME || "";
 
-    await authService.sendResetPasswordEmail(data)
-}
+  await authService.sendResetPasswordEmail(data);
+};
 
 const resetPassword = async (data) => {
-    const {userId, newPassword} = data
+  const { userId, newPassword } = data;
 
-    const account = await Account.findOne({ USER_ID: userId })
+  const account = await Account.findOne({ USER_ID: userId });
 
-    if (!account) {
-        throw new Error('Lỗi xảy ra khi truy xuất tài khoản.')
-    }
+  if (!account) {
+    throw new Error("Lỗi xảy ra khi truy xuất tài khoản.");
+  }
 
-    if (await authService.isMatchedPassword(newPassword, account.PASSWORD)) {
-        return {error: "Mật khẩu mới không được trùng với mật khẩu trước đó."}
-    }
+  if (await authService.isMatchedPassword(newPassword, account.PASSWORD)) {
+    return { error: "Mật khẩu mới không được trùng với mật khẩu trước đó." };
+  }
 
-    account.PASSWORD = await authService.hashPassword(newPassword)
+  account.PASSWORD = await authService.hashPassword(newPassword);
 
-    try {
-        account.save()
-    } catch (error) {
-        throw new Error("Lỗi xảy ra khi đổi mật khẩu.")
-    }
-}
+  try {
+    account.save();
+  } catch (error) {
+    throw new Error("Lỗi xảy ra khi đổi mật khẩu.");
+  }
+};
 
 const updateUser = async (userId, data, deviceId) => {
   const user = await User.findById(userId);
@@ -575,13 +605,14 @@ const updateUser = async (userId, data, deviceId) => {
     return { error: "Người dùng không tồn tại" };
   }
   // Cập nhật thông tin người dùng
+
+  const lastName = data.lastName?.trim() || "";
+
+  const firstName = data.firstName?.trim() || "";
+  const middleName = data.middleName?.trim() || "";
+  const fullName = `${lastName} ${firstName}`.trim();
+
   if (data.firstName || data.lastName || data.middleName) {
-    const lastName = data.lastName?.trim() || "";
-
-    const firstName = data.firstName?.trim() || "";
-    const middleName = data.middleName?.trim() || "";
-    const fullName = `${lastName} ${firstName}`.trim();
-
     if (!lastName || !firstName) {
       return { error: "Vui lòng nhập đầy đủ họ và tên." };
     }
@@ -632,15 +663,15 @@ const updateUser = async (userId, data, deviceId) => {
   // }
   // Trim từng trường để tránh lỗi do khoảng trắng
 
-  if (data.address) {
-    const country = data.address.country?.trim();
-    const city = data.address.city?.trim();
-    const district = data.address.district?.trim();
-    const ward = data.address.ward?.trim();
-    const address1 = data.address.address1?.trim();
-    const address2 = data.address.address2?.trim();
-    const state = data.address.state?.trim();
+  const country = data.address.country?.trim();
+  const city = data.address.city?.trim();
+  const district = data.address.district?.trim();
+  const ward = data.address.ward?.trim();
+  const address1 = data.address.address1?.trim();
+  const address2 = data.address.address2?.trim();
+  const state = data.address.state?.trim();
 
+  if (data.address) {
     if (
       !country ||
       !city ||
@@ -677,13 +708,13 @@ const updateUser = async (userId, data, deviceId) => {
   }
 
   // Trim từng trường để tránh lỗi do khoảng trắng
+  const countryCode = data.phone.countryCode?.trim();
+  const countryName = data.phone.countryName?.trim();
+  const areaCode = data.phone.areaCode?.trim();
+  const phoneNumber = data.phone.phoneNumber?.trim();
+  const fullPhoneNumber = data.phone.fullPhoneNumber?.trim();
 
   if (data.phone) {
-    const countryCode = data.phone.countryCode?.trim();
-    const countryName = data.phone.countryName?.trim();
-    const areaCode = data.phone.areaCode?.trim();
-    const phoneNumber = data.phone.phoneNumber?.trim();
-    const fullPhoneNumber = data.phone.fullPhoneNumber?.trim();
     if (
       !countryCode ||
       !countryName ||
@@ -718,66 +749,61 @@ const updateUser = async (userId, data, deviceId) => {
     const now = new Date();
 
     // Gộp dữ liệu mới với dữ liệu đang còn hiệu lực
-    const lastName =
-      data.contact.lastName?.trim() || backupContact?.LAST_NAME || "";
-    const firstName =
-      data.contact.firstName?.trim() || backupContact?.FIRST_NAME || "";
-    const middleName =
-      data.contact.middleName?.trim() || backupContact?.MIDDLE_NAME || "";
-    const fullName = `${lastName} ${middleName} ${firstName}`.trim();
+    const lastNameContact = lastName?.trim() || backupContact?.LAST_NAME || "";
+    const firstNameContact =
+      firstName?.trim() || backupContact?.FIRST_NAME || "";
+    const middleNameContact =
+      middleName?.trim() || backupContact?.MIDDLE_NAME || "";
+    const fullNameContact = `${lastName} ${middleName} ${firstName}`.trim();
 
-    const phoneNumber =
-      data.contact.phoneNumber?.trim() || backupContact?.PHONE_NUMBER || "";
-    const address1 =
-      data.contact.address1?.trim() || backupContact?.ADDRESS_1 || "";
-    const address2 =
-      data.contact.address2?.trim() || backupContact?.ADDRESS_2 || "";
-    const email = data.contact.email?.trim() || backupContact?.EMAIL || "";
-    const ward = data.contact.ward?.trim() || backupContact?.WARD || "";
-    const district =
-      data.contact.district?.trim() || backupContact?.DISTRICT || "";
-    const city = data.contact.city?.trim() || backupContact?.CITY || "";
-    const state = data.contact.state?.trim() || backupContact?.STATE || "";
-    const country =
-      data.contact.country?.trim() || backupContact?.COUNTRY || "";
-    const relationship =
-      data.contact.relationship?.trim() || backupContact?.RELATIONSHIP || "";
+    const phoneNumberContact =
+      phoneNumber?.trim() || backupContact?.PHONE_NUMBER || "";
+    const address1Contact = address1?.trim() || backupContact?.ADDRESS_1 || "";
+    const address2Contact = address2?.trim() || backupContact?.ADDRESS_2 || "";
+    const emailContact = backupContact?.EMAIL || "";
+    const wardContact = ward?.trim() || backupContact?.WARD || "";
+    const districtContact = district?.trim() || backupContact?.DISTRICT || "";
+    const cityContact = city?.trim() || backupContact?.CITY || "";
+    const stateContact = state?.trim() || backupContact?.STATE || "";
+    const countryContact = country?.trim() || backupContact?.COUNTRY || "";
+    const relationshipContact =
+      data.relationship?.trim() || backupContact?.RELATIONSHIP || "";
 
     const isChange =
       !backupContact || // nếu không có bản cũ thì luôn là thay đổi
-      backupContact.LAST_NAME !== lastName ||
-      backupContact.FIRST_NAME !== firstName ||
-      backupContact.MIDDLE_NAME !== middleName ||
-      backupContact.FULL_NAME !== fullName ||
-      backupContact.PHONE_NUMBER !== phoneNumber ||
-      backupContact.ADDRESS_1 !== address1 ||
-      backupContact.ADDRESS_2 !== address2 ||
-      backupContact.EMAIL !== email ||
-      backupContact.WARD !== ward ||
-      backupContact.DISTRICT !== district ||
-      backupContact.CITY !== city ||
-      backupContact.STATE !== state ||
-      backupContact.COUNTRY !== country ||
-      backupContact.RELATIONSHIP !== relationship;
+      backupContact.LAST_NAME !== lastNameContact ||
+      backupContact.FIRST_NAME !== firstNameContact ||
+      backupContact.MIDDLE_NAME !== middleNameContact ||
+      backupContact.FULL_NAME !== fullNameContact ||
+      backupContact.PHONE_NUMBER !== phoneNumberContact ||
+      backupContact.ADDRESS_1 !== address1Contact ||
+      backupContact.ADDRESS_2 !== address2Contact ||
+      // backupContact.EMAIL !== emailContact ||
+      backupContact.WARD !== wardContact ||
+      backupContact.DISTRICT !== districtContact ||
+      backupContact.CITY !== cityContact ||
+      backupContact.STATE !== stateContact ||
+      backupContact.COUNTRY !== countryContact ||
+      backupContact.RELATIONSHIP !== relationshipContact;
 
     if (isChange) {
       if (backupContact) backupContact.THRU_DATE = now;
 
       user.LIST_CONTACT.push({
-        LAST_NAME: lastName,
-        FIRST_NAME: firstName,
-        MIDDLE_NAME: middleName,
-        FULL_NAME: fullName,
-        PHONE_NUMBER: phoneNumber,
-        ADDRESS_1: address1,
-        ADDRESS_2: address2,
-        EMAIL: email,
-        WARD: ward,
-        DISTRICT: district,
-        CITY: city,
-        STATE: state,
-        COUNTRY: country,
-        RELATIONSHIP: relationship,
+        LAST_NAME: lastNameContact,
+        FIRST_NAME: firstNameContact,
+        MIDDLE_NAME: middleNameContact,
+        FULL_NAME: fullNameContact,
+        PHONE_NUMBER: phoneNumberContact,
+        ADDRESS_1: address1Contact,
+        ADDRESS_2: address2Contact,
+        EMAIL: emailContact,
+        WARD: wardContact,
+        DISTRICT: districtContact,
+        CITY: cityContact,
+        STATE: stateContact,
+        COUNTRY: countryContact,
+        RELATIONSHIP: relationshipContact,
         FROM_DATE: now,
         THRU_DATE: null,
       });
@@ -807,24 +833,24 @@ const updateUser = async (userId, data, deviceId) => {
   // const response = handleUserDataForResponse(userData, account, device);
 
   // return response;
-   const userData = await user.save();
-   const [account, accountDevice] = await Promise.all([
-     Account.findOne({ USER_ID: userId }),
-     AccountDevice.findOne({ "LIST_DEVICE_OF_ACCOUNT.ID_DEVICE": deviceId  }),
-   ]);
+  const userData = await user.save();
+  const [account, accountDevice] = await Promise.all([
+    Account.findOne({ USER_ID: userId }),
+    AccountDevice.findOne({ "LIST_DEVICE_OF_ACCOUNT.ID_DEVICE": deviceId }),
+  ]);
   if (!account) {
     return { error: "Tài khoản không tồn tại." };
   }
   if (!accountDevice) {
     return { error: "Thiết bị không tồn tại." };
   }
-   const device = accountDevice.LIST_DEVICE_OF_ACCOUNT.find(d =>d.ID_DEVICE === deviceId);
+  const device = accountDevice.LIST_DEVICE_OF_ACCOUNT.find(
+    (d) => d.ID_DEVICE === deviceId
+  );
   if (!device) {
     return { error: "Khóa thiết bị không hợp lệ." };
   }
   return handleUserDataForResponse(userData, account, device);
-
-
 };
 
 // lấy thông tin người dùng theo id
@@ -883,111 +909,114 @@ const handleUpdateRoleForUser = async (userId, roleData) => {
     console.error("Lỗi khi cập nhật vai trò:", error);
     return { error: "Lỗi khi cập nhật vai trò" };
   }
-}
+};
 
 const handleGetUserById = async (userId) => {
-    try{
-      const user = await User.findById(userId);
-      if(!user){
-        return {error: "Không tìm thấy người dùng!"};
-      }
-      const account = await Account.findOne({USER_ID: userId});
-      if(!account){
-        return {error: "Không tìm thấy tài khoản!"};
-      }
-        const email = authHelper.isValidInfo(user.LIST_EMAIL);
-        const name = authHelper.isValidInfo(user.LIST_NAME);
-        const address = authHelper.isValidInfo(user.LIST_ADDRESS);
-        const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER);
-      return {
-        user_data: {
-          USER_ID: user._id,
-          USERNAME: account.USERNAME,
-          NAME: {
-            LAST_NAME: name.LAST_NAME,
-            FIRST_NAME: name.FIRST_NAME,
-            MIDDLE_NAME: name.MIDDLE_NAME,
-            FULL_NAME: name.FULL_NAME,
-          },
-          CURRENT_GENDER: user.CURRENT_GENDER,
-          BIRTH_DATE: user.BIRTH_DATE,
-          AVATAR_IMG_URL: user.AVATAR_IMG_URL,
-          ADDRESS: {
-            COUNTRY: address?.COUNTRY,
-            CITY: address?.CITY,
-            DISTRICT: address?.DISTRICT,
-            WARD: address?.WARD,
-            ADDRESS_1: address?.ADDRESS_1,
-            ADDRESS_2: address?.ADDRESS_2,
-            STATE: address?.STATE,
-          },
-          ROLE: {
-            IS_ADMIN: user.ROLE.IS_ADMIN,
-            IS_MANAGER: user.ROLE.IS_MANAGER,
-            IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
-            IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
-          },
-          EMAIL: email.EMAIL,
-          PHONE_NUMBER: {
-            COUNTRY_CODE: phoneNumber?.COUNTRY_CODE,
-            COUNTRY_NAME: phoneNumber?.COUNTRY_NAME,
-            AREA_CODE: phoneNumber?.AREA_CODE,
-            PHONE_NUMBER: phoneNumber?.PHONE_NUMBER,
-            FULL_PHONE_NUMBER: phoneNumber?.FULL_PHONE_NUMBER,
-          },
-          IS_ACTIVE: account.IS_ACTIVE,
-          IS_SUSPENDED: account.IS_SUSPENDED,
-        },
-      };
-    }catch(e){
-      console.log(e)
-      return {error: "Lỗi khi lấy thông tin người dùng!", e};
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return { error: "Không tìm thấy người dùng!" };
     }
-}
+    const account = await Account.findOne({ USER_ID: userId });
+    if (!account) {
+      return { error: "Không tìm thấy tài khoản!" };
+    }
+    const email = authHelper.isValidInfo(user.LIST_EMAIL);
+    const name = authHelper.isValidInfo(user.LIST_NAME);
+    const address = authHelper.isValidInfo(user.LIST_ADDRESS);
+    const phoneNumber = authHelper.isValidInfo(user.LIST_PHONE_NUMBER);
+    return {
+      user_data: {
+        USER_ID: user._id,
+        USERNAME: account.USERNAME,
+        NAME: {
+          LAST_NAME: name.LAST_NAME,
+          FIRST_NAME: name.FIRST_NAME,
+          MIDDLE_NAME: name.MIDDLE_NAME,
+          FULL_NAME: name.FULL_NAME,
+        },
+        CURRENT_GENDER: user.CURRENT_GENDER,
+        BIRTH_DATE: user.BIRTH_DATE,
+        AVATAR_IMG_URL: user.AVATAR_IMG_URL,
+        ADDRESS: {
+          COUNTRY: address?.COUNTRY,
+          CITY: address?.CITY,
+          DISTRICT: address?.DISTRICT,
+          WARD: address?.WARD,
+          ADDRESS_1: address?.ADDRESS_1,
+          ADDRESS_2: address?.ADDRESS_2,
+          STATE: address?.STATE,
+        },
+        ROLE: {
+          IS_ADMIN: user.ROLE.IS_ADMIN,
+          IS_MANAGER: user.ROLE.IS_MANAGER,
+          IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+          IS_CUSTOMER: user.ROLE.IS_CUSTOMER,
+        },
+        EMAIL: email.EMAIL,
+        PHONE_NUMBER: {
+          COUNTRY_CODE: phoneNumber?.COUNTRY_CODE,
+          COUNTRY_NAME: phoneNumber?.COUNTRY_NAME,
+          AREA_CODE: phoneNumber?.AREA_CODE,
+          PHONE_NUMBER: phoneNumber?.PHONE_NUMBER,
+          FULL_PHONE_NUMBER: phoneNumber?.FULL_PHONE_NUMBER,
+        },
+        IS_ACTIVE: account.IS_ACTIVE,
+        IS_SUSPENDED: account.IS_SUSPENDED,
+      },
+    };
+  } catch (e) {
+    console.log(e);
+    return { error: "Lỗi khi lấy thông tin người dùng!", e };
+  }
+};
 
 const rollbackCreatingStaffUser = async (id) => {
-    try {
-      User.deleteOne({ _id: id})
-      Account.deleteOne({ USER_ID: id })
-      AccountDevice.deleteOne({ USER_ID: id })
-    } catch (error) {
-      console.log(error)
-      throw new Error(error.message)
-    }
-}
+  try {
+    User.deleteOne({ _id: id });
+    Account.deleteOne({ USER_ID: id });
+    AccountDevice.deleteOne({ USER_ID: id });
+  } catch (error) {
+    console.log(error);
+    throw new Error(error.message);
+  }
+};
 
 const handleGoogleLogin = async (token, deviceId) => {
   const payload = await authService.verifyTokenOAuth2(token);
-  const { email, sub, name, family_name, picture, given_name, iat, exp } = payload;
-  const expDate = new Date(exp*1000);
+  const { email, sub, name, family_name, picture, given_name, iat, exp } =
+    payload;
+  const expDate = new Date(exp * 1000);
   const now = new Date();
-  if(expDate < now) return {error: "Hết thời gian đăng nhập bằng Google!"};
+  if (expDate < now) return { error: "Hết thời gian đăng nhập bằng Google!" };
 
   //console.log("Payload from token google: ", payload);
-  let userExisting = await User.findOne({"LIST_EMAIL.EMAIL": email});
-  console.log("userExisting",userExisting);
-  if(userExisting){
+  let userExisting = await User.findOne({ "LIST_EMAIL.EMAIL": email });
+  console.log("userExisting", userExisting);
+  if (userExisting) {
     //Kiểm tra email còn hợp lệ không.
     const emailValid = authHelper.isValidInfo(userExisting.LIST_EMAIL);
-    if(emailValid.EMAIL != email) return {error: "Email không còn hợp lệ!"};
+    if (emailValid.EMAIL != email) return { error: "Email không còn hợp lệ!" };
 
-    if((userExisting.GOOGLE_SUB_ID && userExisting.GOOGLE_SUB_ID != sub) || !userExisting.GOOGLE_SUB_ID){
-      return {error: "Tài khoản đã được đăng ký bằng một phương thức khác!"}
+    if (
+      (userExisting.GOOGLE_SUB_ID && userExisting.GOOGLE_SUB_ID != sub) ||
+      !userExisting.GOOGLE_SUB_ID
+    ) {
+      return { error: "Tài khoản đã được đăng ký bằng một phương thức khác!" };
     }
 
-    if(userExisting.GOOGLE_SUB_ID == sub)
-    {
+    if (userExisting.GOOGLE_SUB_ID == sub) {
       const data = {
-        email: email, 
-        deviceId: deviceId, 
-        isGoogle: true
-      }
+        email: email,
+        deviceId: deviceId,
+        isGoogle: true,
+      };
       const response = await login(data);
-      if(response.error) return {error: error};
+      if (response.error) return { error: error };
       return response;
     }
-  };
-  
+  }
+
   //Tạo tài khoản mới.
   const newUserData = {
     username: email,
@@ -1007,25 +1036,25 @@ const handleGoogleLogin = async (token, deviceId) => {
     // phoneNumber: '0123456789',
     // fullPhoneNumber: '+840123456789'
   };
-  
-  try{
+
+  try {
     console.log("data: ", newUserData);
     await handleCreateUser(newUserData);
     //tiến hành đăng nhập
     const data = {
-        email: email, 
-        deviceId: deviceId, 
-        isGoogle: true
-      }
+      email: email,
+      deviceId: deviceId,
+      isGoogle: true,
+    };
     const response = await login(data);
-    if(response.error) return {error: error};
+    if (response.error) return { error: error };
     return response;
-  }catch(error){
+  } catch (error) {
     console.log("Lỗi khi đăng nhập bằng tài khoản Google: ", error);
-    return {error: "Lỗi khi đăng nhập bằng tài khoản Google!"};
+    return { error: "Lỗi khi đăng nhập bằng tài khoản Google!" };
   }
 
-  // thuejc hiện đăng nhập 
+  // thuejc hiện đăng nhập
 };
 
 module.exports = {
@@ -1041,5 +1070,5 @@ module.exports = {
   handleUpdateRoleForUser,
   handleGetUserById,
   resetPassword,
-  handleGoogleLogin
+  handleGoogleLogin,
 };

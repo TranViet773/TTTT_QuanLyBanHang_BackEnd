@@ -308,6 +308,58 @@ const updateListImageForItem = async (req, res) => {
             data: error.message,
         });
     }
+};
+
+const addVoucherForItem = async (req, res) => {
+    try{
+        const response = await itemService.addVoucherForItem(req.params.id, req.body.voucherId);
+        console.log(response);
+        if(response.error){
+            return res.status(500).json({
+                message: response.error,
+                data: null,
+                success: false
+            });
+        }
+
+        return res.status(200).json({
+            message: "Cập nhật thành công!",
+            data: response,
+            success: true
+        })
+    }catch(e){
+        return res.status(200).json({
+            message: "Cập nhật không thành công!",
+            data: null,
+            success: false
+        })
+    }
+}
+
+const removeVoucherForItem = async (req, res) => {
+    try{
+        const response = await itemService.removeVoucherForItem(req.params.id, req.body.voucherId);
+        console.log(response);
+        if(response.error){
+            return res.status(500).json({
+                message: response.error,
+                data: null,
+                success: false
+            });
+        }
+
+        return res.status(200).json({
+            message: "Cập nhật thành công!",
+            data: response,
+            success: true
+        })
+    }catch(e){
+        return res.status(500).json({
+            message: "Cập nhật không thành công!",
+            data: null,
+            success: false
+        })
+    }
 }
 
 
@@ -324,5 +376,7 @@ module.exports = {
     addBOMMaterialToItem,
     updateBOMMaterialInItem,
     deleteBOMMaterialInItem,
-    updateListImageForItem
+    updateListImageForItem,
+    addVoucherForItem,
+    removeVoucherForItem
 };  
