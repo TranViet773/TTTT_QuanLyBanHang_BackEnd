@@ -65,7 +65,7 @@ const updateNumberUsing = async (voucher) => {
             };
         }
 
-        voucher.NUMBER_USING++;
+        voucher.NUMBER_USING += 1;
         await voucher.save();
 
         return {
@@ -73,7 +73,7 @@ const updateNumberUsing = async (voucher) => {
             voucher,
         };
     } catch (error) {
-        console.error("Lỗi khi cập nhật số lần sử dung ", error);
+        console.error("Lỗi khi cập nhật số lần sử dụng:", error);
         return {
             error: "lỗi khi cập nhật số lần sử dụng",
         };

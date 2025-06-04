@@ -1,4 +1,4 @@
-const purchaseInvoiceService = require('../services/purchaseInvoice.service')
+const salesInvoiceService = require('../services/salesInvoice.service')
 
 const getAllInvoices = async (req, res) => {
     try {
@@ -7,7 +7,7 @@ const getAllInvoices = async (req, res) => {
 
         console.log(query)
 
-        const response = await purchaseInvoiceService.getAllInvoices(query)
+        const response = await salesInvoiceService.getAllInvoices(query)
 
         if (response?.error) {
             return res.status(500).json({
@@ -34,8 +34,8 @@ const getAllInvoices = async (req, res) => {
 const getInvoiceByCode = async (req, res) => {
     try {
         const invoiceCode = req.params.invoiceCode
-        const user = req.user
-        const response = await purchaseInvoiceService.getInvoiceByCode(invoiceCode, user)
+        // const user = req.user
+        const response = await salesInvoiceService.getInvoiceByCode(invoiceCode)
 
         if (response?.error) {
             return res.status(400).json({
@@ -64,9 +64,11 @@ const createInvoice = async (req, res) => {
     try {
         const data = req.body
 
-        data.importedBy = req.user.USER_ID
+        data.soldBy = req.user.USER_ID
 
-        const response = await purchaseInvoiceService.createInvoice(data)
+        console.log(data)
+
+        const response = await salesInvoiceService.createInvoice(data)
 
         if (response?.error) {
             return res.status(400).json({
@@ -97,7 +99,7 @@ const updateInvoice = async (req, res) => {
 
         data.invoiceCode = req.params.invoiceCode
         data.userId = req.user.USER_ID
-        const response = await purchaseInvoiceService.updateInvoice(data)
+        const response = await salesInvoiceService.updateInvoice(data)
 
         if (response?.error) {
             return res.status(400).json({

@@ -18,10 +18,8 @@ const unitItemRoute = require('./app/routes/unitItem.route');
 const unitInvoiceRoute = require('./app/routes/unitInvoice.route');
 const uploadRoute = require('./app/routes/upload.route');
 const accountRoute = require('./app/routes/account.route');
-
 const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
-const unitInvouceRoute = require('./app/routes/unitInvoice.route')
-
+const salesInvoiceRoute = require('./app/routes/salesInvoice.route');
 const voucherRoute = require("./app/routes/voucher.route");
 
 
@@ -43,6 +41,7 @@ app.use('/api/items', itemRoute);
 app.use('/api/unit-items', unitItemRoute);
 app.use('/api/upload', uploadRoute);
 app.use('/api/purchase-invoices', purchaseInvoiceRoute);
+app.use('/api/sales-invoices', salesInvoiceRoute)
 app.use('/api/unit-invoices', unitInvoiceRoute);
 app.use('/api/account', accountRoute);
 app.use('/api/vouchers', voucherRoute);
