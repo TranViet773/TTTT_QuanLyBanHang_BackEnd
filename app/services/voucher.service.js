@@ -365,5 +365,6 @@ module.exports = {
   updateVoucher,
   deactivateVoucher,
   restoreVoucher,
-  updateNumberUsing
+  updateNumberUsing,
+  rollbackNumberUsing,
 };
