@@ -1,6 +1,7 @@
 const SalesInvoice = require('../models/SalesInvoices.model')
 const Account = require('../models/Account.model')
 const User = require('../models/User.model')
+const Item = require('../models/Item.model')
 const Voucher = require('../models/Vouchers.model')
 const voucherService = require('../services/voucher.service')
 const authHelper = require('../helpers/auth.helper')
@@ -434,6 +435,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
     let totalAmount = 0     // tổng tiền hàng của hóa đơn
     let count = 0           // đếm số lượng các item đã update, hỗ trợ cho rollback không cần phải duyệt những item chưa được update
     const vouchers = []
+    const backupVouchers = []
 
     console.log("originalItems: ", originalItems)
     for(const addItem of items) {
@@ -450,7 +452,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
 
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
-                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
                     console.log("item sold out")
                     return ({error: `Số lượng tồn kho của ${item.ITEM_NAME} không đủ hoặc đã hết hàng.`})
                 } 
@@ -465,6 +467,8 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                         return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                     }
 
+                    backupVouchers.push({...voucher.toObject?.() || voucher})
+
                     try {
                         await voucherService.updateNumberUsing(voucher)
                         vouchers.push(voucher)
@@ -476,8 +480,9 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                                                                                 : addItem.TOTAL_PRICE - voucher.MAX_DISCOUNT
 
                     } catch (error) {
+                        backupVouchers.pop()
                         if (vouchers.length > 0) {
-                            await voucherService.rollbackNumberUsing(vouchers)
+                            await voucherService.rollbackNumberUsing(vouchers, backupVouchers)
                         }
                         
                         throw new Error(error)
@@ -490,7 +495,9 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                     count++
                     break
                 } catch (error) {
-                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await voucherService.rollbackNumberUsing(vouchers, backupVouchers)
+  
                     console.log(error.message)
                     throw new Error("Lỗi khi cập nhật số lượng item.")
                 }
@@ -498,7 +505,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
         }
     }
 
-    return {totalAmount, count, vouchers}
+    return {totalAmount, count, vouchers, backupVouchers, items}
 }
 
 const createInvoice = async (data) => {
@@ -534,7 +541,8 @@ const createInvoice = async (data) => {
 
         let count = 0
         let totalAmount = 0
-        let vouchers = []
+        const vouchers = []
+        const backupVouchers = []
 
         if (status === 'CONFIRMED' || status === 'PAYMENTED') {
             const updatingData = await updateItemForExporting(items, originalItems, backupItems, now)
@@ -547,7 +555,8 @@ const createInvoice = async (data) => {
             
             count = updatingData.count
             totalAmount = updatingData.totalAmount
-            vouchers = updatingData.vouchers
+            vouchers.push(...updatingData.vouchers)
+            backupVouchers.push(...updatingData.backupVouchers)
         }
         
         else {
@@ -567,16 +576,19 @@ const createInvoice = async (data) => {
                                 return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                             }
 
-                            try {
-                                await voucherService.updateNumberUsing(voucher)
-                                vouchers.push(voucher)
-                            } catch (error) {
-                                if (vouchers.length > 0) {
-                                    await voucherService.rollbackNumberUsing(vouchers)
-                                }
+                            // backupVouchers.push(voucher)
+
+                            // try {
+                            //     await voucherService.updateNumberUsing(voucher)
+                            //     vouchers.push(voucher)
+                            // } catch (error) {
+                            //     backupVouchers.pop(voucher)
+                            //     if (vouchers.length > 0) {
+                            //         await voucherService.rollbackNumberUsing(vouchers, backupVouchers)
+                            //     }
                                 
-                                throw new Error(error)
-                            }
+                            //     throw new Error(error)
+                            // }
                         }
 
                         addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
@@ -660,7 +672,7 @@ const createInvoice = async (data) => {
                 return await newInvoice.save()
             } catch (error) {
                 if (status === 'CONFIRMED' || status === 'PAYMENTED') {
-                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
                 }
                 if (vouchers.length > 0) {
                     await voucherService.rollbackNumberUsing(vouchers)
@@ -680,7 +692,7 @@ const createInvoice = async (data) => {
     }
 }
 
-const updateInvoice = async (data) => {
+const updateInvoiceStatus = async (data) => {
     const {invoiceCode, status} = data
     const now = new Date()
     let count = 0       // đếm document
@@ -730,18 +742,21 @@ const updateInvoice = async (data) => {
                     return updateItems
                 }
 
-                count = updateItems.count             
+                count = updateItems.count  
+                newItems = updateItems.items
+                           
             }
 
             invoice.STATUS = status
             invoice.UPDATED_AT = now
+            // invoice.ITEMS = newItems
 
             const updateInvoice = await invoice.save()
             return await handleInvoiceDataForResponse(updateInvoice)
 
         } catch (error) {
 
-            invoiceHelper.rollbackItems(count, originalItems, backupItems)
+            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
 
             console.log(error)
             throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
@@ -751,9 +766,105 @@ const updateInvoice = async (data) => {
     }
 }
 
+const checkValidVouchers = async (items) => {
+    const errorFlag = false
+
+    for (const item of items) {
+        if (item.PRODUCT_VOUCHER_ID) {
+            const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
+            const isAvailable = voucherService.isVoucherAvailable(voucher)
+            if (isAvailable?.error) {
+                items.PRODUCT_VOUCHER_ID = null
+                errorFlag = true
+            }
+        }        
+    }
+
+    return errorFlag
+}
+
+const updateInvoice = async (data) => {
+
+    const {items, invoiceCode} = data
+
+    try {
+        const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
+
+        if (invoice.STATUS !== 'DRAFT') {
+            return {error: `Không thể cập nhật hóa đơn ở trạng thái ${invoice.STATUS}`}
+        }
+
+        const itemCodes = items.map(item => item.ITEM_CODE)
+        const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
+
+        for(const newItem of items) {          
+        
+            for(const item of originalItems) {
+
+                if(item.ITEM_CODE === newItem.ITEM_CODE) {
+
+                    const price = authHelper.isValidInfo(item.PRICE)
+                    newItem.UNIT = price.get("UNIT")
+                    newItem.UNIT_PRICE = price.PRICE_AMOUNT
+
+                    if (newItem.PRODUCT_VOUCHER_ID) {
+                        const voucher = await Voucher.findById(newItem.PRODUCT_VOUCHER_ID)
+
+                        if (!voucher) {
+                            return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
+                        }
+                    }
+
+                    newItem.TOTAL_PRICE = price.PRICE_AMOUNT * newItem.QUANTITY
+
+                    console.log(newItem)
+
+                    totalAmount += newItem.TOTAL_PRICE 
+                }
+            }
+        }
+    } catch (error) {
+        console.log(error)
+        throw new Error ("Lỗi xảy ra trong quá trình cập nhật hóa đơn.")
+    }
+}
+
+const deleteItem = async (data) => {
+    const {items, invoiceCode} = data
+    
+    try {           
+        if (Array.isArray(items)) {
+            const invoice = await SalesInvoice.findOneAndUpdate(
+                { INVOICE_CODE: invoiceCode },
+                { ITEMS: items },
+                { new: true  }  
+            )
+
+            await invoice.save()
+        }
+
+        else {
+            const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
+            for(let i=0; i < invoice.ITEMS.length; i++) {
+                if (invoice[i].ITEM_CODE === items.ITEM_CODE) {
+                    invoice.ITEMS.splice(index, 1)  // xóa phần tử trong mở theo index
+                    break
+                }
+            }
+            await invoice.save()
+        }
+
+    } catch (error) {
+        console.log(error)
+        throw new Error ("Lỗi xảy ra khi xóa item(s) trong hóa đơn.")
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
-    updateInvoice
+    updateInvoiceStatus,
+    updateInvoice,
+    deleteItem,
 }

@@ -5,7 +5,7 @@ const isVoucherAvailable = (voucher) => {
     if (!voucher) {
         return {
             available: false,
-            message: "Voucher không tồn tại hoặc đã hết hạn",
+            error: "Voucher không tồn tại hoặc đã hết hạn",
         };
     }
     // kiem tra ngày bắt đầu và kết thúc của voucher
@@ -13,19 +13,19 @@ const isVoucherAvailable = (voucher) => {
     if (currentDate < voucher.START_DATE) {
         return {
             available: false,
-            message: "Voucher chưa bắt đầu sử dụng",
+            error: "Voucher chưa bắt đầu sử dụng",
         };
     }
     if (currentDate > voucher.END_DATE) {
         return {
             available: false,
-            message: "Voucher đã hết hạn",
+            error: "Voucher đã hết hạn",
         };
     }
     if (voucher.NUMBER_USING >= voucher.QUANTITY) {
         return {
-            available: false,
-            message: "Voucher đã sử dụng hết",
+            available: voucher.QUANTITY,
+            error: "Voucher đã sử dụng hết",
         };
     }
     return {
@@ -34,18 +34,22 @@ const isVoucherAvailable = (voucher) => {
     };
 };
 
-const rollbackNumberUsing = async (vouchers) => {
+const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     try {
-        for (const voucher of vouchers) {
-            if (voucher.NUMBER_USING > 0) {
-                voucher.NUMBER_USING--;
-                await voucher.save();
-            } else {
-                return {
-                    error: "không thể rollback khi number_using = 0"
-                };
+        for (const origin of originalVouchers) {
+            for (const backup of backupVouchers) {
+                if (origin._id === backup._id) {
+                    origin.NUMBER_USING = backup.NUMBER_USING
+                    try {
+                        await origin.save()
+                        break
+                    } catch (error) {
+                        console.log(error)
+                        throw new Error(`Lỗi khi rollback voucher ${origin.VOUCHER_CODE}`)
+                    }
+                }
             }
-        };
+        }
 
     } catch (error) {
         console.error("Lỗi khi rollback số lần sử dụng", error);
@@ -56,20 +60,31 @@ const rollbackNumberUsing = async (vouchers) => {
     }
 }
 
-const updateNumberUsing = async (voucher) => {
+const updateNumberUsing = async (voucher, quantity) => {
     try {
         const check = isVoucherAvailable(voucher);
-        if (!check.available) {
+        if (check?.error) {
             return {
-                error: check.message,
+                error: check.error,
             };
         }
 
-        voucher.NUMBER_USING += 1;
+        let outOfVoucher = 0
+
+        if ((voucher.NUMBER_USING + quantity) > voucher.QUANTITY) {
+            outOfVoucher = (voucher.NUMBER_USING + quantity) - voucher.QUANTITY
+            voucher.NUMBER_USING = voucher.QUANTITY         
+        }
+
+        else {
+            voucher.NUMBER_USING += quantity
+        }
+
         await voucher.save();
 
         return {
             success: true,
+            outOfVoucher,
             voucher,
         };
     } catch (error) {

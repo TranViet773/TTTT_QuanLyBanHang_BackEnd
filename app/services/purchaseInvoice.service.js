@@ -333,7 +333,7 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
 
         // kiểm tra nhà cung cấp có tồn tại
         if(!await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
-            invoiceHelper.rollbackItems(count, originalItems, backupItems)
+            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
             return({error: "Nhà cung cấp không tồn tại."})
         }
         
@@ -354,7 +354,7 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
                     count++
                     break
                 } catch (error) {
-                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
 
                     console.log(error.message)
                     throw new Error("Cập nhật số lượng item thất bại.")
@@ -460,7 +460,7 @@ const createInvoice = async (data) => {
                 return await (new PurchaseInvoice(invoiceData)).save()
             } catch (error) {
                 if (statusName === 'CONFIRMED' || statusName === 'PAYMENTED') {
-                    invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
                 }
                 console.log(error.message)
                 return null
@@ -559,7 +559,7 @@ const updateInvoice = async (data) => {
 
         } catch (error) {
 
-            invoiceHelper.rollbackItems(count, originalItems, backupItems)
+            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
 
             console.log(error)
             throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
