@@ -36,6 +36,16 @@ const isVoucherAvailable = (voucher) => {
 
 const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     try {
+        for (const voucher of vouchers) {
+            if (voucher.NUMBER_USING > 0) {
+                voucher.NUMBER_USING--;
+                await voucher.save();
+            } else {
+                return {
+                    error: "không thể rollback khi number_using = 0",
+                };
+            }
+        }
         for (const origin of originalVouchers) {
             for (const backup of backupVouchers) {
                 if (origin._id === backup._id) {

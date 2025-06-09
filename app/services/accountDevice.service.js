@@ -1,4 +1,4 @@
-const AccountDevice = require('../models/account_device.model');
+const AccountDevice = require('../models/AccountDevice.model');
 
 const createAccountDevice = async (accountDeviceData) => {
   const accountDevice = await AccountDevice.create(accountDeviceData);
