@@ -16,7 +16,8 @@ const getAllItems = async ({
   itemCode = null,
   itemId = null,
   minPrice = null,
-  maxPrice = null
+  maxPrice = null,
+  isProduct = null
 }) => {
   try {
     const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -40,6 +41,14 @@ const getAllItems = async ({
     }
 
     // Nếu có itemCode thì ưu tiên tìm theo itemCode, không kết hợp với điều kiện khác
+    console.log(isProduct)
+    if(isProduct != null && isProduct == "true"){
+      matchConditions.push({ITEM_CODE: { $regex: "SP", $options: 'i' }});
+    }else if(isProduct != null && isProduct == "false"){
+      matchConditions.push({ITEM_CODE: { $regex: "NL", $options: 'i' }});
+
+    }
+    
     if (itemCode) {
       matchConditions.push({ ITEM_CODE: itemCode });
     } else {
@@ -132,6 +141,32 @@ const getAllItems = async ({
           localField: 'LIST_VOUCHER_ACTIVE',
           foreignField: '_id',
           as: 'LIST_VOUCHER_ACTIVE'
+        }
+      },
+      {
+        $addFields: {
+          LIST_VOUCHER_ACTIVE: {
+            $filter: {
+              input: '$LIST_VOUCHER_ACTIVE',
+              as: 'voucher',
+              cond: {
+                $and: [
+                  {
+                    $gt: [
+                      { $subtract: ['$$voucher.QUANTITY', '$$voucher.NUMBER_USING'] },
+                      0
+                    ]
+                  },
+                  {
+                    $lte: ['$$voucher.START_DATE', new Date()]
+                  },
+                  {
+                    $gte: ['$$voucher.END_DATE', new Date()]
+                  }
+                ]
+              }
+            }
+          }
         }
       },
       

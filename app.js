@@ -37,7 +37,7 @@ app.use(express.urlencoded({ extended: true })); // Xử lý x-www-form-urlencod
 
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
-app.use('/account-devices', accountDeviceRoute)
+app.use('/api/account-devices', accountDeviceRoute)
 app.use('/api/supplier', supplierRoute);
 app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
