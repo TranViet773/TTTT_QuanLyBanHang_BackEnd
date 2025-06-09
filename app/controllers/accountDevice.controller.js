@@ -20,7 +20,7 @@ const getAllDevice = async (req, res) => {
 
 const getAllDeviceByUserId = async (req, res) => {
     try {
-        const data = req.params.userId
+        const data = req.params
         data.user = req.user
         const response = await accountDeviceService.getDeviceListByUserId(data)
 
