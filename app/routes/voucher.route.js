@@ -22,12 +22,12 @@ router.get(
 router.get("/", authenticateToken, voucherController.getAllVoucher);
 router.get("/:id", authenticateToken, voucherController.getVoucherById);
 router.put(
-    "/:id",
+    "/update/:id",
     authenticateToken,
     checkRoleMiddleware(["admin", "manager", "staff"]),
     voucherController.updateVoucher
 );
-router.delete(
+router.put(
     "/:id",
     authenticateToken,
     checkRoleMiddleware(["admin", "manager", "staff"]),
