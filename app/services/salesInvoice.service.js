@@ -569,26 +569,32 @@ const createInvoice = async (data) => {
                         addItem.UNIT = price.get("UNIT")
                         addItem.UNIT_PRICE = price.PRICE_AMOUNT
 
+                        let discount = 0
+
                         if (addItem.PRODUCT_VOUCHER_ID) {
                             const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
-
                             if (!voucher) {
                                 return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                             }
+                            
+                            const isAvailable = voucherService.isVoucherAvailable(voucher)
+                            if (isAvailable?.error) {
+                                return ({ error: isAvailable.error })
+                            }
 
-                            // backupVouchers.push(voucher)
-
-                            // try {
-                            //     await voucherService.updateNumberUsing(voucher)
-                            //     vouchers.push(voucher)
-                            // } catch (error) {
-                            //     backupVouchers.pop(voucher)
-                            //     if (vouchers.length > 0) {
-                            //         await voucherService.rollbackNumberUsing(vouchers, backupVouchers)
-                            //     }
-                                
-                            //     throw new Error(error)
-                            // }
+                            if ((addItem.QUANTITY + voucher.NUMBER_USING) > voucher.QUANTITY) {
+                                const quantity = addItem.QUANTITY + voucher.NUMBER_USING - voucher.QUANTITY
+                                items.splice(items.indexOf(addItem), 0, {
+                                    ITEM_CODE: addItem.ITEM_CODE,
+                                    UNIT: addItem.UNIT,
+                                    UNIT_PRICE: addItem.UNIT_PRICE,
+                                    QUANTITY: quantity,
+                                    TOTAL_PRICE: addItem.UNIT_PRICE * quantity
+                                })
+                                addItem.QUANTITY = voucher.QUANTITY - voucher.NUMBER_USING
+                            }         
+                            
+                            discount = price.PRICE_AMOUNT * addItem.QUANTITY * 1
                         }
 
                         addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
@@ -614,7 +620,7 @@ const createInvoice = async (data) => {
                 }
 
                 try {
-                    const updateVoucher = await voucherService.updateNumberUsing(voucher)
+                    const {updateVoucher} = await voucherService.updateNumberUsing(voucher)
                     if (updateVoucher?.error) {
                         return {error: updateVoucher.error}
                     }
