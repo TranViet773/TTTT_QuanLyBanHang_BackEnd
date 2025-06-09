@@ -182,8 +182,8 @@ const handleCreateUser = async (data) => {
           lastName && firstName
             ? `${lastName} ${firstName}`
             : lastName
-            ? lastName
-            : firstName,
+              ? lastName
+              : firstName,
         FROM_DATE: new Date(),
         THRU_DATE: null,
       },
@@ -853,8 +853,21 @@ const updateUser = async (userId, data, deviceId) => {
   return handleUserDataForResponse(userData, account, device);
 };
 
+
+
+// Hàm loại bỏ dấu và chuyển thường
+const removeVietnameseTones = (str) => {
+  return str
+    .normalize("NFD")                        
+    .replace(/[\u0300-\u036f]/g, "")          
+    .replace(/đ/g, "d").replace(/Đ/g, "D")    
+    .toLowerCase();                           
+};
+
+
+
 // lấy thông tin người dùng theo id
-const getUsers = async ({ page = 1, limit = 10, role }) => {
+const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
   try {
     // ép kiểu String thành số
     const pageNumber = Math.max(parseInt(page), 1);
@@ -869,15 +882,34 @@ const getUsers = async ({ page = 1, limit = 10, role }) => {
       else if (role === "staff") query["ROLE.IS_SERVICE_STAFF"] = true;
       else if (role === "customer") query["ROLE.IS_CUSTOMER"] = true;
     }
+
+
+
+
+
     console.log("Truy vấn:", query);
     console.log("QUERY:", query);
 
     const total = await User.countDocuments(query);
-    const users = await User.find(query)
+    let users = await User.find(query)
+
       .skip(skip)
       .limit(limitNumber)
       .sort({ CREATED_DATE: -1 });
 
+
+      if (search.trim() !== "") {
+        const keyword = removeVietnameseTones(search.trim());
+
+        users = users.filter((user) => {
+          const nameRecord = user.LIST_NAME?.find((n) => n.THRU_DATE === null);
+          if (!nameRecord) return false;
+
+          const fullName = nameRecord.FULL_NAME || "";
+          const normalizedName = removeVietnameseTones(fullName);
+          return normalizedName.includes(keyword);
+        });
+      }
     return {
       total,
       page: pageNumber,

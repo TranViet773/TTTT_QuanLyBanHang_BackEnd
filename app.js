@@ -24,6 +24,7 @@ const salesInvoiceRoute = require('./app/routes/salesInvoice.route');
 const voucherRoute = require("./app/routes/voucher.route");
 
 
+
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true
