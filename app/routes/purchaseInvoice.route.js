@@ -4,9 +4,9 @@ const purchaseInvoiceController = require('../controllers/purchaseInvoice.contro
 const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.middleware');
 
 // Post 
-router.post('/', authenticateToken, purchaseInvoiceController.createInvoice)
-router.put('/:invoiceCode', authenticateToken, purchaseInvoiceController.updateInvoiceStatus)
-router.get('/', authenticateToken, purchaseInvoiceController.getAllInvoices)
-router.get('/:invoiceCode', authenticateToken, purchaseInvoiceController.getInvoiceByCode)
+router.post('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.createInvoice)
+router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.updateInvoice)
+router.get('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.getAllInvoices)
+router.get('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), purchaseInvoiceController.getInvoiceByCode)
 
 module.exports = router;

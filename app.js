@@ -11,6 +11,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const authRoute = require('./app/routes/auth.route');
 const userRoute = require('./app/routes/user.route');
+const accountDeviceRoute = require('./app/routes/accountDevice.route')
 const supplierRoute = require('./app/routes/supplier.route');
 const itemTypeRoute = require('./app/routes/itemType.route');
 const itemRoute = require('./app/routes/item.route');
@@ -18,11 +19,10 @@ const unitItemRoute = require('./app/routes/unitItem.route');
 const unitInvoiceRoute = require('./app/routes/unitInvoice.route');
 const uploadRoute = require('./app/routes/upload.route');
 const accountRoute = require('./app/routes/account.route');
-
 const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
-const unitInvouceRoute = require('./app/routes/unitInvoice.route')
-
+const salesInvoiceRoute = require('./app/routes/salesInvoice.route');
 const voucherRoute = require("./app/routes/voucher.route");
+
 
 
 app.use(cors({
@@ -37,12 +37,14 @@ app.use(express.urlencoded({ extended: true })); // Xử lý x-www-form-urlencod
 
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
+app.use('/api/account-devices', accountDeviceRoute)
 app.use('/api/supplier', supplierRoute);
 app.use('/api/item-types', itemTypeRoute);
 app.use('/api/items', itemRoute);
 app.use('/api/unit-items', unitItemRoute);
 app.use('/api/upload', uploadRoute);
 app.use('/api/purchase-invoices', purchaseInvoiceRoute);
+app.use('/api/sales-invoices', salesInvoiceRoute)
 app.use('/api/unit-invoices', unitInvoiceRoute);
 app.use('/api/account', accountRoute);
 app.use('/api/vouchers', voucherRoute);
