@@ -1,4 +1,4 @@
-const accountDeviceService = require('../services/account.service')
+const accountDeviceService = require('../services/accountDevice.service')
 
 const getAllDevice = async (req, res) => {
     try {
