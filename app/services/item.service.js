@@ -521,13 +521,22 @@ const updateItemStock = async (id, quantity) => { // Chưa check
 
 const updateItemPrice = async (id, priceData) => { //Chưa check
     try {
+        const item = await Item.findById(id);
+        if(!item){
+          return {error: `Item có id: ${id} không tồn tại!`}
+        }
+
+        const lastPriceEntry = item.PRICE?.[item.PRICE.length - 1];
+        const unitValue = lastPriceEntry?.UNIT || null;
+        console.log({unitValue});
         const updatedItem = await Item.findByIdAndUpdate(id,
             { 
                 $push: {
                     PRICE: {
                         PRICE_AMOUNT: priceData,
                         FROM_DATE: new Date(),
-                        THRU_DATE: null
+                        THRU_DATE: null,
+                        UNIT: unitValue
                     }
                 },
                 UPDATED_AT: new Date()
@@ -707,7 +716,7 @@ const addVoucherForItem = async (itemId, voucherId) => {
     if (voucherInItem) return { error: "Voucher đã tồn tại trong item!" };
 
     if(!voucher.IS_ACTIVE) return {error: "Voucher hết hạn sử dụng!"} ;
-
+    // Bổ sung thêm kiểm tra ngày.
     const updateItem = await Item.findByIdAndUpdate(
       itemId,
       {

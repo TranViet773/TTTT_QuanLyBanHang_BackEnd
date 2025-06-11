@@ -1,3 +1,4 @@
+const ItemModel = require("../models/Item.model");
 const Voucher = require("../models/Vouchers.model");
 
 const isVoucherAvailable = (voucher) => {
@@ -142,7 +143,23 @@ const createVoucher = async (data) => {
             error: "Giá trị giảm giá tối đa không được nhỏ hơn 0",
         };
     }
+    if (TYPE === "PERCENTAGE" && (!MAX_DISCOUNT || MAX_DISCOUNT <= 0)) {
+        return {
+            error: "Giá trị giảm giá tối đa phải lớn hơn 0 cho loại PERCENTAGE",
+        };
+    }
+    if (TYPE === "FIXED_AMOUNT" && MAX_DISCOUNT) {
+        return {
+          error: "Giảm giá cố định không được nhập MAX_DISCOUNT",
+        };
+    }
+    if (TYPE ==="PERCENTAGE" && VALUE > 100) {
+        return {
+            error: "Giá trị giảm giá phần trăm không được lớn hơn 100%",
+        };
 
+    }
+ 
     const newVoucher = new Voucher({
         VOUCHER_CODE,
         TYPE,
@@ -246,11 +263,11 @@ const getAllVouchers = async ({
 
         const total = await Voucher.countDocuments(query);
         const vouchers = await Voucher.find(query)
-            .populate("CREATE_BY")
-            .skip(skip)
-            .limit(limitNumber)
-            .sort({ createdAt: -1 })
-            .lean();
+          .populate("CREATE_BY")
+          .skip(skip)
+          .limit(limitNumber)
+          .sort({ START_DATE: -1 })
+          .lean();
         // vouchers.forEach((voucher) => {
         //   const user = voucher.CREATE_BY;
 
@@ -397,14 +414,14 @@ const updateVoucher = async (voucher, updateData) => {
 const deactivateVoucher = async (voucher) => {
     try {
         const updated = await Voucher.findOneAndUpdate(
-            { VOUCHER_CODE: voucher.VOUCHER_CODE },
+            { VOUCHER_CODE: voucher.VOUCHER_CODE, IS_ACTIVE: true },
             { IS_ACTIVE: false },
             { new: true }
         );
 
         if (!updated) {
             return {
-                error: `Không tìm thấy voucher với mã '${voucher.VOUCHER_CODE}'`,
+                error: `Voucher với mã '${voucher.VOUCHER_CODE}' đã bị vô hiệu hóa hoặc không tồn tại`,
             };
         }
 
@@ -498,6 +515,14 @@ const getTotalVoucher = async () => {
     const expire = await Voucher.countDocuments({
       END_DATE: { $gte: today, $lte: sevendayLater },
     });
+
+
+
+    // đếm các voucher đã hết hạn
+    const expired = await Voucher.countDocuments({
+        END_DATE: { $lt: today },
+        });
+
       
     return {
       totalVoucher: totalVoucher,
@@ -512,7 +537,8 @@ const getTotalVoucher = async () => {
         PRODUCT: countProduct,
         GLOBAL: countGlobal,
       },
-      exprire: expire,
+      exprireSoon: expire,
+        expired: expired,
     };
 
 
@@ -525,6 +551,92 @@ const getTotalVoucher = async () => {
 
    }
 }
+
+const addItemsForVoucher = async (voucherCode, itemIds) => {
+    try{
+        if(!voucherCode || itemIds.length<=0){
+            return {error: "Voucher code hoặc danh sách sản phẩm rỗng!"};
+        }
+        const currentDate = new Date();
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher không tồn tại!"};
+        }
+
+        if(voucher.IS_ACTIVE == false 
+            || (voucher.QUANTITY - voucher.NUMBER_USING <= 0)
+            || voucher.END_DATE < currentDate
+            || voucher.START_DATE > currentDate
+        )
+            return {error: "Voucher không còn hợp lệ!"};
+
+        try{
+            for (const itemId of itemIds) {
+                const item = await ItemModel.findById(itemId);
+                if(!item) return {error: `Item có id: ${itemId} không tồn tại!`};
+
+                 // Kiểm tra voucher đã tồn tại trong list voucher của item chưa.
+                // Thực hiện push voucher vào item.
+                if(item.LIST_VOUCHER_ACTIVE.includes(voucher._id)) // nếu có thì nó trả về true;
+                    continue;
+                
+                item.LIST_VOUCHER_ACTIVE.push(voucher._id);
+                await item.save();
+            }
+            return voucher;
+        }catch(e){
+            console.log("Lỗi thêm itemIds vào voucher: ", e);
+            return {error: "Có lỗi khi thêm Item vào voucher!"};
+        }
+    }catch(e){
+        console.log(e);
+        return {error: "Có lỗi khi thêm voucher vào Items!"}
+    }
+}
+
+const removeItemFromVoucher = async (voucherCode, itemId) => {
+    try{
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher không tồn tại!"};
+        }
+
+        const item = await ItemModel.findById(itemId);
+        if(!item) return {error: `Item có id: ${itemId} không tồn tại!`};
+
+        if(item.LIST_VOUCHER_ACTIVE.includes(voucher._id)) {
+            item.LIST_VOUCHER_ACTIVE = item.LIST_VOUCHER_ACTIVE.filter(id => id.toString() !== voucher._id.toString());
+        }
+        await item.save();
+        return voucher;
+    }catch(e){
+        console.log(e);
+        return {error: "Có lỗi trong quá trình hủy áp dụng voucher cho Item. Vui lòng thử lại!"};
+    }
+}
+
+const getItemsFromVoucher = async (voucherCode) => {
+    try{
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher có mã không tồn tại!"};
+        }
+
+        const items = await ItemModel.find({LIST_VOUCHER_ACTIVE: voucher._id});
+        console.log("Danh sách item thuộc voucher: ", items);
+        return {
+            voucher: voucher,
+            items: items
+        }
+    }catch(e){
+        console.log(e);
+        return {
+            error: "Có lỗi khi lấy thông tin item của voucher!"
+        }
+    }
+}
+
+
 module.exports = {
   createVoucher,
   getAllVouchers,
@@ -533,7 +645,10 @@ module.exports = {
   deactivateVoucher,
   restoreVoucher,
   updateNumberUsing,
-  rollbackNumberUsing,
+  rollbackNumberUsing, 
   getTotalVoucher,
+  addItemsForVoucher,
+  removeItemFromVoucher,
+  getItemsFromVoucher,
   isVoucherAvailable,
 };
