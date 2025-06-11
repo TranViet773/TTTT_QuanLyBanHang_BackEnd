@@ -45,4 +45,9 @@ router.put(
 //   checkRoleMiddleware(["admin", "manager", "staff"]),
 //   voucherController.getTotalVoucher
 // );
+
+router.put("/add-item/voucher-code/:voucherCode", authenticateToken, checkRoleMiddleware(["admin", "manager", "staff"]), voucherController.addItemsForVoucher);
+router.put("/remove-item/voucher-code/:voucherCode", authenticateToken, checkRoleMiddleware(["admin", "manager", "staff"]), voucherController.removeItemFromVoucher);
+router.get("/:voucherCode/items", authenticateToken, checkRoleMiddleware(["admin", "manager", "staff"]), voucherController.getItemsFromVoucher);
+
 module.exports = router;
