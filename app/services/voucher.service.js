@@ -145,7 +145,23 @@ const createVoucher = async (data) => {
             error: "Giá trị giảm giá tối đa không được nhỏ hơn 0",
         };
     }
+    if (TYPE === "PERCENTAGE" && (!MAX_DISCOUNT || MAX_DISCOUNT <= 0)) {
+        return {
+            error: "Giá trị giảm giá tối đa phải lớn hơn 0 cho loại PERCENTAGE",
+        };
+    }
+    if (TYPE === "FIXED_AMOUNT" && MAX_DISCOUNT) {
+        return {
+          error: "Giảm giá cố định không được nhập MAX_DISCOUNT",
+        };
+    }
+    if (TYPE ==="PERCENTAGE" && VALUE > 100) {
+        return {
+            error: "Giá trị giảm giá phần trăm không được lớn hơn 100%",
+        };
 
+    }
+ 
     const newVoucher = new Voucher({
         VOUCHER_CODE,
         TYPE,
