@@ -15,8 +15,6 @@ const isValidEmail = (user, email) => {
 
 const isValidInfo = (listInfo) => {
     const now = new Date()
-
-    console.log(listInfo)
     // tạo bản sao và đảo ngược mảng trước khi duyệt
     return listInfo.slice().reverse().find(info =>
         info.FROM_DATE <= now &&

@@ -2,7 +2,6 @@ const Item = require('../models/Item.model')
 
 const getItemDocument = async (items) => {
     const itemCodes = items.map(item => item.ITEM_CODE)
-    console.log("Item code list: ", itemCodes)
 
     const originalItems = await (async () => {
         try {

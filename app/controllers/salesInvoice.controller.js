@@ -5,8 +5,6 @@ const getAllInvoices = async (req, res) => {
 
         const query = {...req.query}
 
-        console.log(query)
-
         const response = await salesInvoiceService.getAllInvoices(query)
 
         if (response?.error) {
@@ -66,8 +64,6 @@ const createInvoice = async (req, res) => {
 
         data.soldBy = req.user.USER_ID
 
-        console.log(data)
-
         const response = await salesInvoiceService.createInvoice(data)
 
         if (response?.error) {
@@ -98,8 +94,16 @@ const updateInvoice = async (req, res) => {
         const data = req.body
 
         data.invoiceCode = req.params.invoiceCode
-        data.userId = req.user.USER_ID
+        data.userId = req.user
         const response = await salesInvoiceService.updateInvoice(data)
+
+        if (response?.warning) {
+            return res.status(400).json({
+                message: response.warning,
+                success: false,
+                data: response.invoice
+            })
+        }
 
         if (response?.error) {
             return res.status(400).json({

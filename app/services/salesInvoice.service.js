@@ -9,9 +9,9 @@ const invoiceHelper = require('../helpers/invoice.helper')
 
 
 const handleInvoiceDataForResponse = async (invoice) => {
-    console.log(invoice)
-
     try {
+        const now = new Date()
+
         const pipeline = [
             {
                 $lookup: {
@@ -59,7 +59,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                             input: "$ITEM_DETAILS",
                                                             as: 'item_detail',
                                                             cond: {
-                                                                $eq: ['$$item.ITEM_CODE', '$$item_detail.ITEM_CODE']
+                                                                $eq: ['$$item.ITEM_CODE', '$$item_detail.ITEM_CODE'],
                                                             }
                                                         }
                                                     }, 0]
@@ -70,6 +70,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                     ITEM_NAME: "$$matchedItem.ITEM_NAME",
                                                     ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
                                                     AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
+                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE'
                                                 }
                                             }
                                         }                                        
@@ -119,8 +120,10 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                             in: {
                                                 VOUCHER: {
                                                     VOUCHER_CODE: '$$matchedVoucher.VOUCHER_CODE',
-                                                    TYPE: '$matchedVoucher.TYPE',
+                                                    TYPE: '$$matchedVoucher.TYPE',
                                                     VALUE: '$$matchedVoucher.VALUE',
+                                                    // QUANTITY: '$$matchedVoucher.QUANTITY',
+                                                    // NUMBER_USING: '$$matchedVoucher.NUMBER_USING',
                                                     MAX_DISCOUNT: '$$matchedVoucher.MAX_DISCOUNT',        
                                                }
                                             }
@@ -132,7 +135,14 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     }
                 }
             },
-
+            {
+                $lookup: {
+                    from: 'vouchers',
+                    localField: 'ITEMS.ITEM_DETAIL.LIST_VOUCHER_ACTIVE',
+                    foreignField: '_id',
+                    as: 'LIST_VOUCHER_ACTIVE',
+                }
+            },
             {
                 $lookup: {
                     from: 'accounts',
@@ -180,7 +190,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     preserveNullAndEmptyArrays: true,
                 }
             },
-
+            {
+                $unset: [
+                    'ITEMS.PRODUCT_VOUCHER_ID'
+                ]
+            },
             {
                 $project: {
                     _id: 0,
@@ -206,7 +220,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     PAYMENT_METHOD: '$PAYMENT_METHOD',
                     PURCHASE_METHOD: '$PURCHASE_METHOD',
                     CREATED_AT: '$CREATED_AT',
-                    UPDATED_AT: '$UPDATED_AT'
+                    UPDATED_AT: '$UPDATED_AT',
+                    LIST_VOUCHER_ACTIVE: '$LIST_VOUCHER_ACTIVE',
                 }
             }
         ]
@@ -219,6 +234,52 @@ const handleInvoiceDataForResponse = async (invoice) => {
             },
             ...pipeline
         ])
+
+        console.log("response:", response)
+        console.log("items: ", JSON.stringify(response[0].ITEMS, null, 2))
+
+        const listVoucher = response[0].LIST_VOUCHER_ACTIVE
+        if(listVoucher){
+            // console.log("List voucher:", listVoucher)
+            for (let i = 0; i < response[0].ITEMS.length; i++) {
+                const item = response[0].ITEMS[i]
+                console.log("Item", i+1, ":", item)
+
+                const detail = item.ITEM_DETAIL
+                console.log("Detail", i+1, ":", detail)
+
+                const vouchers = detail.LIST_VOUCHER_ACTIVE
+                console.log("vouchers:", vouchers)
+
+                if (vouchers && vouchers.length > 0) {
+                    for (let j = 0; j < vouchers.length; j++) {
+                        
+                        for (const voucherDetail of listVoucher) {
+                            console.log("Voucher detail:", voucherDetail)
+                            if (voucherDetail._id.equals(vouchers[j])
+                                // voucherDetail.IS_ACTIVE === true &&
+                                // new Date(voucherDetail.START_DATE) <= now &&
+                                // new Date(voucherDetail.END_DATE) >= now &&
+                                // voucherDetail.NUMBER_USING < voucherDetail.QUANTITY
+                            ) {
+                                vouchers[j] = voucherDetail                               
+                                break
+                            }
+
+                            // else {
+                            //     vouchers.splice(j, 1)    
+                            // }
+                            
+                        }
+                    }
+                }
+                console.log("Flag", i+1)
+            }
+        }
+        else console.log("null")    
+        
+
+        delete response[0].LIST_VOUCHER_ACTIVE
 
         if (invoice.CUSTOMER_ID) {
             const user = await User.findById(invoice.CUSTOMER_ID)
@@ -343,7 +404,6 @@ const getAllInvoices = async (query) => {
 
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
-            console.log(startDate)
 
             let endDate
             if (toDate?.trim()) {
@@ -388,15 +448,12 @@ const getAllInvoices = async (query) => {
         pipeline.push({ $skip: skip })
         pipeline.push({ $limit: limitNumber })
 
-        console.log(JSON.stringify(pipeline, null, 2));
+        // console.log(JSON.stringify(pipeline, null, 2));
 
         const [totalResult, results] = await Promise.all([
             SalesInvoice.aggregate(totalPipeline),
             SalesInvoice.aggregate(pipeline)
         ])
-
-        console.log(results)
-                        
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
 
@@ -436,13 +493,20 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
     let count = 0           // đếm số lượng các item đã update, hỗ trợ cho rollback không cần phải duyệt những item chưa được update
     const vouchers = []
     const backupVouchers = []
+    let flag = false
 
-    console.log("originalItems: ", originalItems)
     for(const addItem of items) {
+
+        if (flag === true) {
+            flag = false
+            continue
+        }
 
         for(const item of originalItems) {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
+
+                // console.log('Item', item.ITEM_NAME, ": ", addItem)
 
                 const price = authHelper.isValidInfo(item.PRICE)
                 addItem.UNIT = price.UNIT
@@ -453,10 +517,15 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
                     await invoiceHelper.rollbackItems(count, originalItems, backupItems)
-                    console.log("item sold out")
-                    return ({error: `Số lượng tồn kho của ${item.ITEM_NAME} không đủ hoặc đã hết hàng.`})
+
+                    return ({
+                        // khi lỗi sẽ trả về tất cả dữ liệu (để thực hiện rollback) kèm error
+                        totalAmount, count, vouchers, backupVouchers, items,
+                        error: `Số lượng tồn kho của ${item.ITEM_NAME} không đủ hoặc đã hết hàng.`
+                    })
                 } 
                 
+                // cập nhật số lượng và thời gian update
                 item.ITEM_STOCKS.QUANTITY -=  addItem.QUANTITY,
                 item.ITEM_STOCKS.LAST_UPDATED = now
 
@@ -464,14 +533,59 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                     const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
 
                     if (!voucher) {
-                        return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
+                        return ({ 
+                            totalAmount, count, vouchers, backupVouchers, items,
+                            error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` 
+                        })
                     }
 
+                    // kiểm tra phạm vi sử dụng của voucher
+                    if (voucher.APPLY_SCOPE !== 'PRODUCT') {
+                        return { 
+                            totalAmount, count, vouchers, backupVouchers, items,
+                            error: `Phạm vi áp dụng của voucher ${voucher.VOUCHER_CODE} không hợp lệ.` 
+                        }
+                    }
+
+                    // nếu voucher hợp lệ thì push vào backup để rollback dữ liệu nếu xảy ra lỗi
                     backupVouchers.push({...voucher.toObject?.() || voucher})
 
                     try {
-                        await voucherService.updateNumberUsing(voucher)
+                        const updatingVoucher = await voucherService.updateNumberUsing(voucher, addItem.QUANTITY)
+                        if (updatingVoucher.error) {
+                            return {
+                                totalAmount, count, vouchers, backupVouchers, items,
+                                error: updatingVoucher.error
+                            }
+                        }
+
+                        // push voucher đã được cập nhật vào mảng (để rollback nếu lỗi)
                         vouchers.push(voucher)
+
+                        // nếu số lượng mua lớn hơn lượng voucher còn khả dụng
+                        if (updatingVoucher.outOfVoucher > 0) {
+
+                            const quantity = updatingVoucher.outOfVoucher
+                            // thêm item mới vào trước item hiện tại (để không duyệt lại) 
+                            items.splice(items.indexOf(addItem), 0, {
+                                ITEM_CODE: addItem.ITEM_CODE,
+                                UNIT: addItem.UNIT,
+                                UNIT_PRICE: addItem.UNIT_PRICE,
+                                QUANTITY: quantity,
+                                TOTAL_PRICE: addItem.UNIT_PRICE * quantity
+                            })
+                            
+                            // đặt cờ để vòng lặp bỏ qua phần tử kế tiếp (là item hiện tại đang được duyệt)
+                            flag = true
+
+                            // cập nhật lại tổng tiền với item đã thêm mới
+                            totalAmount += addItem.UNIT_PRICE * quantity
+
+                            // cập nhật lại số lượng của item hiện tại
+                            addItem.QUANTITY -= updatingVoucher.outOfVoucher
+                            // cập nhật lại giá
+                            addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
+                        }
                         
                         const discount = voucher.TYPE === 'PERCENTAGE' ? addItem.TOTAL_PRICE * voucher.VALUE / 100
                                                                         : voucher.VALUE
@@ -484,6 +598,8 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                         if (vouchers.length > 0) {
                             await voucherService.rollbackNumberUsing(vouchers, backupVouchers)
                         }
+
+                        console.log(error)
                         
                         throw new Error(error)
                     }
@@ -491,7 +607,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
 
                 try {
                     await item.save()
-                    totalAmount += addItem.TOTAL_PRICE
+                    totalAmount = addItem.TOTAL_PRICE < 0 ? totalAmount : totalAmount + addItem.TOTAL_PRICE
                     count++
                     break
                 } catch (error) {
@@ -508,8 +624,87 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
     return {totalAmount, count, vouchers, backupVouchers, items}
 }
 
+const updateInvoiceItems = async (items, originalItems) => {
+    for(const addItem of items) {          
+        for(const item of originalItems) {
+
+            if(item.ITEM_CODE === addItem.ITEM_CODE) {
+
+                // thêm trường giá bán vào item trong hóa đơn
+                const price = authHelper.isValidInfo(item.PRICE)
+                addItem.UNIT = price.get("UNIT")
+                addItem.UNIT_PRICE = price.PRICE_AMOUNT
+
+                let discount = 0
+
+                // kiểm tra sản phẩm có giảm giá
+                if (addItem.PRODUCT_VOUCHER_ID) {
+                    const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
+                    if (!voucher) {
+                        return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
+                    }
+                    
+                    if (voucher.APPLY_SCOPE !== 'PRODUCT') {
+                        return ({ error: `Phạm vi áp dụng của voucher ${voucher.VOUCHER_CODE} không hợp lệ.` })
+                    }
+
+                    // kiểm tra voucher còn khả dụng
+                    const isAvailable = voucherService.isVoucherAvailable(voucher)
+                    if (isAvailable?.error) {
+                        return ({ error: isAvailable.error })
+                    }
+
+                    // nếu số lượng voucher còn khả dụng > số lượng mua của item
+                    // thêm mới item với số lượng bằng số lượng item bị thiếu voucher
+                    // chỉ để test các api, FE sẽ luôn gửi về dữ liệu đúng
+                    if ((addItem.QUANTITY + voucher.NUMBER_USING) > voucher.QUANTITY) {
+                        const quantity = addItem.QUANTITY + voucher.NUMBER_USING - voucher.QUANTITY
+                        
+                        // thêm item mới vào trước item hiện tại (để không duyệt lại) 
+                        items.splice(items.indexOf(addItem), 0, {
+                            ITEM_CODE: addItem.ITEM_CODE,
+                            UNIT: addItem.UNIT,
+                            UNIT_PRICE: addItem.UNIT_PRICE,
+                            QUANTITY: quantity,
+                            TOTAL_PRICE: addItem.UNIT_PRICE * quantity
+                        })
+                        
+                        // cập nhật lại tổng tiền với item đã thêm mới
+                        totalAmount += addItem.UNIT_PRICE * quantity
+
+                        // cập nhật lại số lượng của item hiện tại
+                        addItem.QUANTITY = voucher.QUANTITY - voucher.NUMBER_USING
+
+                    }         
+                    
+                    // nếu voucher thuộc loại phần trăm (PERCENTAGE)
+                    if (voucher.TYPE === 'PERCENTAGE') {
+                        discount = price.PRICE_AMOUNT * voucher.VALUE / 100
+                    }
+
+                    // nếu voucher thuộc loại FIXED_AMOUNT
+                    else {
+                        discount = voucher.VALUE
+                    }
+
+                    discount = discount > voucher.MAX_DISCOUNT ? voucher.MAX_DISCOUNT : discount
+                }
+
+                // cập nhật tổng tiền cho item hiện tại với số tiền được giảm (nếu có)
+                addItem.TOTAL_PRICE = (price.PRICE_AMOUNT * addItem.QUANTITY) - (discount * addItem.QUANTITY)
+
+                // cập nhật lại tổng hóa đơn
+                totalAmount = addItem.TOTAL_PRICE < 0 ? totalAmount : totalAmount + addItem.TOTAL_PRICE
+
+                break
+            }
+        }
+    }
+}
+
 const createInvoice = async (data) => {
-    const {status, soldBy, customerId, note, items, voucherGlobalId, tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+    const {status, soldBy, customerId, note, items, voucherGlobalId, 
+            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
 
     if (status === 'CANCELLED') {
         return { error: `Status ${status} không hợp lệ.`}
@@ -530,9 +725,6 @@ const createInvoice = async (data) => {
             }
         })()
 
-        console.log("Original items: ", originalItems)
-        console.log("Backup items: ", originalItems)
-
         if (error) {
             return error
         }
@@ -544,81 +736,71 @@ const createInvoice = async (data) => {
         const vouchers = []
         const backupVouchers = []
 
+
+        // tạo hóa đơn trực tiếp
         if (status === 'CONFIRMED' || status === 'PAYMENTED') {
+
+            // Update số lượng item
             const updatingData = await updateItemForExporting(items, originalItems, backupItems, now)
-
-            console.log(updatingData)
-
-            if (updatingData.errorItemUpdating) {
+            
+            if (updatingData.error) {
+                if (updatingData.count > 0) {
+                    await invoiceHelper.rollbackItems(updatingData.count, originalItems, backupItems)
+                }
+                
+                if (updatingData.vouchers?.length > 0) {
+                    await voucherService.rollbackNumberUsing(updatingData.vouchers, updatingData.backupVouchers)
+                }
                 return updatingData
             }
-            
-            count = updatingData.count
+
+            // update tổng tiền
             totalAmount = updatingData.totalAmount
+            
+            // backup dữ liệu
+            count = updatingData.count
             vouchers.push(...updatingData.vouchers)
             backupVouchers.push(...updatingData.backupVouchers)
         }
         
         else {
-            for(const addItem of items) {          
-                for(const item of originalItems) {
-
-                    if(item.ITEM_CODE === addItem.ITEM_CODE) {
-
-                        const price = authHelper.isValidInfo(item.PRICE)
-                        addItem.UNIT = price.get("UNIT")
-                        addItem.UNIT_PRICE = price.PRICE_AMOUNT
-
-                        let discount = 0
-
-                        if (addItem.PRODUCT_VOUCHER_ID) {
-                            const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
-                            if (!voucher) {
-                                return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
-                            }
-                            
-                            const isAvailable = voucherService.isVoucherAvailable(voucher)
-                            if (isAvailable?.error) {
-                                return ({ error: isAvailable.error })
-                            }
-
-                            if ((addItem.QUANTITY + voucher.NUMBER_USING) > voucher.QUANTITY) {
-                                const quantity = addItem.QUANTITY + voucher.NUMBER_USING - voucher.QUANTITY
-                                items.splice(items.indexOf(addItem), 0, {
-                                    ITEM_CODE: addItem.ITEM_CODE,
-                                    UNIT: addItem.UNIT,
-                                    UNIT_PRICE: addItem.UNIT_PRICE,
-                                    QUANTITY: quantity,
-                                    TOTAL_PRICE: addItem.UNIT_PRICE * quantity
-                                })
-                                addItem.QUANTITY = voucher.QUANTITY - voucher.NUMBER_USING
-                            }         
-                            
-                            discount = price.PRICE_AMOUNT * addItem.QUANTITY * 1
-                        }
-
-                        addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
-
-                        console.log(addItem)
-
-                        totalAmount += addItem.TOTAL_PRICE 
-                    }
-                }
-            }
+            totalAmount = await updateInvoiceItems(items, originalItems)
         }
 
-        console.log("Items: ", items)
+        // tính thuế
+        const taxValue = tax ? (totalAmount * tax / 100) : 0
 
-        const taxValue = tax ? totalAmount * tax / 100 : 0
+        // kiểm tra voucher toàn hóa đơn
+        if (voucherGlobalId) {
+            const voucher = await Voucher.findById(voucherGlobalId)
+            if (!voucher) {
+                return { error: "Voucher không tồn tại." }
+            }
 
-        if (status !== 'DRAFT') {
-            if (voucherGlobalId) {
-                const voucher = await Voucher.findById(voucherGlobalId)
+            if (voucher.APPLY_SCOPE !== 'GLOBAL') {
+                return { error: `Phạm vi áp dụng của voucher ${voucher.VOUCHER_CODE} không hợp lệ.` }
+            }
 
-                if (!voucher) {
-                    return { error: "Voucher không tồn tại." }
-                }
+            const isAvailable = voucherService.isVoucherAvailable(voucher)
+            if (isAvailable?.error) {
+                return ({ error: isAvailable.error })
+            }
 
+            // cập nhật tổng tiền với số tiền được giảm
+            if (voucher.TYPE === 'PERCENTAGE') {
+                const discount = totalAmount * voucher.VALUE / 100
+
+                totalAmount = discount < voucher.MAX_DISCOUNT ? totalAmount - discount : totalAmount - voucher.MAX_DISCOUNT
+            }
+
+            else {
+                totalAmount = voucher.VALUE < voucher.MAX_DISCOUNT ? totalAmount - voucher.VALUE  : totalAmount - voucher.MAX_DISCOUNT
+            }
+
+            totalAmount = totalAmount < 0 ? 0 : totalAmount          
+
+            // nếu không phải hóa đơn nháp, cập nhật số lần dùng voucher vào DB
+            if (status !== 'DRAFT') {
                 try {
                     const {updateVoucher} = await voucherService.updateNumberUsing(voucher)
                     if (updateVoucher?.error) {
@@ -627,17 +809,6 @@ const createInvoice = async (data) => {
 
                     else {
                         vouchers.push(voucher)
-                        if (voucher.TYPE === 'PERCENTAGE') {
-                            const discount = totalAmount * voucher.VALUE / 100
-
-                            totalAmount = discount < voucher.MAX_DISCOUNT ? totalAmount - discount : totalAmount - voucher.MAX_DISCOUNT
-                        }
-
-                        else {
-                            totalAmount = voucher.VALUE < voucher.MAX_DISCOUNT ? totalAmount - voucher.VALUE  : totalAmount - voucher.MAX_DISCOUNT
-                        }
-
-                        totalAmount = totalAmount < 0 ? 0 : totalAmount
                     }
                 } catch (error) {
                     if (vouchers.length > 0) {
@@ -649,7 +820,7 @@ const createInvoice = async (data) => {
             }
         }
 
-        console.log("vouchers: ", vouchers)
+        const finalTotal = extraFee ? (totalAmount + taxValue + extraFee) : (totalAmount + taxValue)
 
         const invoiceData = {
             INVOICE_CODE: now.getTime(),
@@ -665,7 +836,7 @@ const createInvoice = async (data) => {
             EXTRA_FEE: extraFee,
             EXTRA_FEE_UNIT: extraFeeUnit,
             EXTRA_FEE_NOTE: extraFeeNote,
-            TOTAL_WITH_TAX_EXTRA_FEE: extraFee ? totalAmount + taxValue + extraFee : totalAmount + taxValue,         
+            TOTAL_WITH_TAX_EXTRA_FEE: finalTotal,         
             PAYMENT_METHOD: paymentMethod,
             PURCHASE_METHOD: purchaseMethod,
             CREATED_AT: now,
@@ -677,13 +848,15 @@ const createInvoice = async (data) => {
                 const newInvoice = new SalesInvoice(invoiceData)
                 return await newInvoice.save()
             } catch (error) {
+
+                // rollback nếu xảy ra lỗi
                 if (status === 'CONFIRMED' || status === 'PAYMENTED') {
                     await invoiceHelper.rollbackItems(count, originalItems, backupItems)
                 }
                 if (vouchers.length > 0) {
                     await voucherService.rollbackNumberUsing(vouchers)
                 }
-                console.log(error.message)
+                console.log(error)
                 return null
             }
         }) ()
@@ -698,12 +871,12 @@ const createInvoice = async (data) => {
     }
 }
 
-const updateInvoiceStatus = async (data) => {
-    const {invoiceCode, status} = data
+const updateInvoiceStatus = async (invoice, status) => {
+    // const {invoiceCode, status} = data
     const now = new Date()
     let count = 0       // đếm document
 
-    const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
+    // const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
@@ -728,8 +901,6 @@ const updateInvoiceStatus = async (data) => {
                 throw new Error(error.message)
             }
         })()
-
-        console.log(originalItems)
 
         if (error) {
             return error
@@ -773,63 +944,119 @@ const updateInvoiceStatus = async (data) => {
 }
 
 const checkValidVouchers = async (items) => {
-    const errorFlag = false
+    let valid = true
 
     for (const item of items) {
-        if (item.PRODUCT_VOUCHER_ID) {
+        if (item.PRODUCT_VOUCHER_ID !== null) {
             const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
             const isAvailable = voucherService.isVoucherAvailable(voucher)
             if (isAvailable?.error) {
-                items.PRODUCT_VOUCHER_ID = null
-                errorFlag = true
+                item.PRODUCT_VOUCHER_ID = null
+                valid = false
             }
         }        
     }
 
-    return errorFlag
+    return valid
 }
 
 const updateInvoice = async (data) => {
 
-    const {items, invoiceCode} = data
+    const {items, invoiceCode, status} = data
+    const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
+    const backupLastUpdated = invoice.LAST_UPDATED
+
+    if(!invoice) {
+        return ({error: "Không tìm thấy hóa đơn."})
+    }
+
+    if (invoice.STATUS !== 'DRAFT' && status) {
+        return {error: `Không thể cập nhật lại STATUS cho hóa đơn đang ở trạng thái ${invoice.STATUS}.`}
+    }
+
+    if (items && invoice.STATUS !== 'DRAFT') {
+        return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
+    }
+
+    const backupInvoiceItems = invoice.ITEMS.map(item => ({...item.toObject?.() || item}))
 
     try {
-        const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
 
-        if (invoice.STATUS !== 'DRAFT') {
-            return {error: `Không thể cập nhật hóa đơn ở trạng thái ${invoice.STATUS}`}
+        let totalAmount = 0
+
+        if (items && items.length > 0) {
+            const itemCodes = items.map(item => item.ITEM_CODE)
+            const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
+
+            const updatingItems = await updateInvoiceItems(items, originalItems)
+            if (updatingItems?.error) {
+                return { error: updatingItems.error }
+            }
+
+            for (const origin of invoice.ITEMS) {
+                for (const newItems of items)  {
+                    if (newItems.ITEM_CODE === origin.ITEM_CODE) {
+                        origin = newItems
+                        break
+                    }
+                }
+                totalAmount += origin.TOTAL_AMOUNT
+            }
         }
 
-        const itemCodes = items.map(item => item.ITEM_CODE)
-        const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
+        const globalVoucher = invoice.VOUCHER_GLOBAL_ID ? await Voucher.findById(invoice.VOUCHER_GLOBAL_ID) : null
+        const isAvailable = globalVoucher ? voucherService.isVoucherAvailable(globalVoucher).available : null
+        const isValidVoucher = checkValidVouchers(invoice.ITEMS)
+        if (isValidVoucher || 
+            (invoice.VOUCHER_GLOBAL_ID && isAvailable === false)
+        ){
+            if (isAvailable === false) {
+                invoice.VOUCHER_GLOBAL_ID = null
+            }
+            
+            invoice.UPDATED_AT = new Date()
 
-        for(const newItem of items) {          
-        
-            for(const item of originalItems) {
+            await invoice.save()
+            return {
+                invoice: await handleInvoiceDataForResponse(invoice),
+                warning: "Không thể cập nhật vì có tồn tại voucher không hợp lệ trong hóa đơn (được chuyển về null)."
+            }
+        }
 
-                if(item.ITEM_CODE === newItem.ITEM_CODE) {
+        const taxValue = invoice.TAX ? totalAmount * invoice.TAX : 0
 
-                    const price = authHelper.isValidInfo(item.PRICE)
-                    newItem.UNIT = price.get("UNIT")
-                    newItem.UNIT_PRICE = price.PRICE_AMOUNT
+        if (isAvailable === true) {
+            const discount = globalVoucher.TYPE === 'PERCENTAGE' ? (totalAmount * globalVoucher.VALUE / 100) : globalVoucher.VALUE
+            totalAmount = discount > globalVoucher.MAX_DISCOUNT ? totalAmount - globalVoucher.MAX_DISCOUNT :
+                                                                    totalAmount - discount
+        }
 
-                    if (newItem.PRODUCT_VOUCHER_ID) {
-                        const voucher = await Voucher.findById(newItem.PRODUCT_VOUCHER_ID)
+        const finalTotal = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
 
-                        if (!voucher) {
-                            return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
-                        }
-                    }
+        invoice.TOTAL_AMOUNT = totalAmount
+        invoice.TOTAL_WITH_TAX_EXTRA_FEE = finalTotal
 
-                    newItem.TOTAL_PRICE = price.PRICE_AMOUNT * newItem.QUANTITY
+        const updatingInvoice = await invoice.save()
 
-                    console.log(newItem)
+        if (status) {
+            return await updateInvoiceStatus(updatingInvoice, status)
+        }
 
-                    totalAmount += newItem.TOTAL_PRICE 
+    } catch (error) {
+
+        for(const backup of backupInvoiceItems) {
+            for (let origin of invoice.ITEMS) {
+                if (backup.ITEM_CODE === origin.ITEM_CODE) {
+                    origin = backup
+                    break
                 }
             }
         }
-    } catch (error) {
+        
+        invoice.LAST_UPDATED = backupLastUpdated
+        
+        await invoice.save()
+
         console.log(error)
         throw new Error ("Lỗi xảy ra trong quá trình cập nhật hóa đơn.")
     }
@@ -857,6 +1084,7 @@ const deleteItem = async (data) => {
                     break
                 }
             }
+            
             await invoice.save()
         }
 
