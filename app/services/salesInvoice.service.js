@@ -10,8 +10,6 @@ const invoiceHelper = require('../helpers/invoice.helper')
 
 const handleInvoiceDataForResponse = async (invoice) => {
     try {
-        const now = new Date()
-
         const pipeline = [
             {
                 $lookup: {
@@ -235,27 +233,19 @@ const handleInvoiceDataForResponse = async (invoice) => {
             ...pipeline
         ])
 
-        console.log("response:", response)
-        console.log("items: ", JSON.stringify(response[0].ITEMS, null, 2))
-
         const listVoucher = response[0].LIST_VOUCHER_ACTIVE
         if(listVoucher){
-            // console.log("List voucher:", listVoucher)
             for (let i = 0; i < response[0].ITEMS.length; i++) {
                 const item = response[0].ITEMS[i]
-                console.log("Item", i+1, ":", item)
 
                 const detail = item.ITEM_DETAIL
-                console.log("Detail", i+1, ":", detail)
 
                 const vouchers = detail.LIST_VOUCHER_ACTIVE
-                console.log("vouchers:", vouchers)
 
                 if (vouchers && vouchers.length > 0) {
                     for (let j = 0; j < vouchers.length; j++) {
                         
                         for (const voucherDetail of listVoucher) {
-                            console.log("Voucher detail:", voucherDetail)
                             if (voucherDetail._id.equals(vouchers[j])
                                 // voucherDetail.IS_ACTIVE === true &&
                                 // new Date(voucherDetail.START_DATE) <= now &&
@@ -273,7 +263,6 @@ const handleInvoiceDataForResponse = async (invoice) => {
                         }
                     }
                 }
-                console.log("Flag", i+1)
             }
         }
         else console.log("null")    
@@ -587,11 +576,14 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                             addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
                         }
                         
-                        const discount = voucher.TYPE === 'PERCENTAGE' ? addItem.TOTAL_PRICE * voucher.VALUE / 100
+                        console.log("total price of", item.ITEM_NAME, ":", addItem.TOTAL_PRICE)
+
+                        const discount = voucher.TYPE === 'PERCENTAGE' ? addItem.UNIT_PRICE * voucher.VALUE / 100
                                                                         : voucher.VALUE
 
-                        addItem.TOTAL_PRICE = discount < voucher.MAX_DISCOUNT ? addItem.TOTAL_PRICE - discount
-                                                                                : addItem.TOTAL_PRICE - voucher.MAX_DISCOUNT
+                        addItem.TOTAL_PRICE = voucher.MAX_DISCOUNT && discount < voucher.MAX_DISCOUNT ? 
+                                                    addItem.TOTAL_PRICE - (discount * addItem.QUANTITY) : 
+                                                    addItem.TOTAL_PRICE - (voucher.MAX_DISCOUNT * addItem.QUANTITY)
 
                     } catch (error) {
                         backupVouchers.pop()
@@ -625,7 +617,14 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
 }
 
 const updateInvoiceItems = async (items, originalItems) => {
-    for(const addItem of items) {          
+    let loopFlag = false
+    let totalAmount = 0
+    for(const addItem of items) {   
+        if (loopFlag) {
+            loopFlag = true
+            continue
+        }
+
         for(const item of originalItems) {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
@@ -640,6 +639,8 @@ const updateInvoiceItems = async (items, originalItems) => {
                 // kiểm tra sản phẩm có giảm giá
                 if (addItem.PRODUCT_VOUCHER_ID) {
                     const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
+                    console.log("voucher:", voucher)
+
                     if (!voucher) {
                         return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
                     }
@@ -673,7 +674,10 @@ const updateInvoiceItems = async (items, originalItems) => {
                         totalAmount += addItem.UNIT_PRICE * quantity
 
                         // cập nhật lại số lượng của item hiện tại
-                        addItem.QUANTITY = voucher.QUANTITY - voucher.NUMBER_USING
+                        addItem.QUANTITY -=quantity
+
+                        // đặt cờ để bỏ qua item kế tiếp trong vòng lặp (tức item hiện tại sau khi thêm item bị thiếu voucher vào mảng)
+                        loopFlag = true
 
                     }         
                     
@@ -687,7 +691,7 @@ const updateInvoiceItems = async (items, originalItems) => {
                         discount = voucher.VALUE
                     }
 
-                    discount = discount > voucher.MAX_DISCOUNT ? voucher.MAX_DISCOUNT : discount
+                    discount = voucher.MAX_DISCOUNT && discount > voucher.MAX_DISCOUNT ? voucher.MAX_DISCOUNT : discount
                 }
 
                 // cập nhật tổng tiền cho item hiện tại với số tiền được giảm (nếu có)
@@ -700,6 +704,7 @@ const updateInvoiceItems = async (items, originalItems) => {
             }
         }
     }
+    return totalAmount
 }
 
 const createInvoice = async (data) => {
@@ -765,6 +770,12 @@ const createInvoice = async (data) => {
         
         else {
             totalAmount = await updateInvoiceItems(items, originalItems)
+
+            if (totalAmount?.error) {
+                return totalAmount
+            }
+
+            console.log("Total amount of draft:", totalAmount)
         }
 
         // tính thuế
