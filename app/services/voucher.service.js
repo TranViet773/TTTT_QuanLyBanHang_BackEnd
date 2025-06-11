@@ -25,7 +25,7 @@ const isVoucherAvailable = (voucher) => {
     }
     if (voucher.NUMBER_USING >= voucher.QUANTITY) {
         return {
-            available: voucher.QUANTITY,
+            available: false,
             error: "Voucher đã sử dụng hết",
         };
     }
@@ -37,16 +37,16 @@ const isVoucherAvailable = (voucher) => {
 
 const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     try {
-        for (const voucher of vouchers) {
-            if (voucher.NUMBER_USING > 0) {
-                voucher.NUMBER_USING--;
-                await voucher.save();
-            } else {
-                return {
-                    error: "không thể rollback khi number_using = 0",
-                };
-            }
-        }
+        // for (const voucher of originalVouchers) {
+        //     if (voucher.NUMBER_USING > 0) {
+        //         voucher.NUMBER_USING--;
+        //         await voucher.save();
+        //     } else {
+        //         return {
+        //             error: "Không thể rollback khi number_using = 0",
+        //         };
+        //     }
+        // }
         for (const origin of originalVouchers) {
             for (const backup of backupVouchers) {
                 if (origin._id === backup._id) {
@@ -65,15 +65,15 @@ const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     } catch (error) {
         console.error("Lỗi khi rollback số lần sử dụng", error);
         return {
-            error: "KHông thể rollback",
+            error: "Không thể rollback",
         };
     }
 };
 
-const updateNumberUsing = async (voucher, quantity) => {
+const updateNumberUsing = async (voucher, quantity=1) => {
     try {
         const check = isVoucherAvailable(voucher);
-        if (check?.error) {
+        if (check?.available === false) {
             return {
                 error: check.error,
             };
@@ -87,7 +87,7 @@ const updateNumberUsing = async (voucher, quantity) => {
         }
 
         else {
-            voucher.NUMBER_USING += quantity
+            voucher.NUMBER_USING = voucher.NUMBER_USING + quantity
         }
 
         await voucher.save();
@@ -95,13 +95,10 @@ const updateNumberUsing = async (voucher, quantity) => {
         return {
             success: true,
             outOfVoucher,
-            voucher,
         };
     } catch (error) {
         console.error("Lỗi khi cập nhật số lần sử dụng:", error);
-        return {
-            error: "lỗi khi cập nhật số lần sử dụng",
-        };
+        throw new Error ("Lỗi khi cập nhật số lần sử dụng")
     }
 };
 
@@ -146,7 +143,23 @@ const createVoucher = async (data) => {
             error: "Giá trị giảm giá tối đa không được nhỏ hơn 0",
         };
     }
+    if (TYPE === "PERCENTAGE" && (!MAX_DISCOUNT || MAX_DISCOUNT <= 0)) {
+        return {
+            error: "Giá trị giảm giá tối đa phải lớn hơn 0 cho loại PERCENTAGE",
+        };
+    }
+    if (TYPE === "FIXED_AMOUNT" && MAX_DISCOUNT) {
+        return {
+          error: "Giảm giá cố định không được nhập MAX_DISCOUNT",
+        };
+    }
+    if (TYPE ==="PERCENTAGE" && VALUE > 100) {
+        return {
+            error: "Giá trị giảm giá phần trăm không được lớn hơn 100%",
+        };
 
+    }
+ 
     const newVoucher = new Voucher({
         VOUCHER_CODE,
         TYPE,
@@ -250,11 +263,11 @@ const getAllVouchers = async ({
 
         const total = await Voucher.countDocuments(query);
         const vouchers = await Voucher.find(query)
-            .populate("CREATE_BY")
-            .skip(skip)
-            .limit(limitNumber)
-            .sort({ createdAt: -1 })
-            .lean();
+          .populate("CREATE_BY")
+          .skip(skip)
+          .limit(limitNumber)
+          .sort({ START_DATE: -1 })
+          .lean();
         // vouchers.forEach((voucher) => {
         //   const user = voucher.CREATE_BY;
 
@@ -401,14 +414,14 @@ const updateVoucher = async (voucher, updateData) => {
 const deactivateVoucher = async (voucher) => {
     try {
         const updated = await Voucher.findOneAndUpdate(
-            { VOUCHER_CODE: voucher.VOUCHER_CODE },
+            { VOUCHER_CODE: voucher.VOUCHER_CODE, IS_ACTIVE: true },
             { IS_ACTIVE: false },
             { new: true }
         );
 
         if (!updated) {
             return {
-                error: `Không tìm thấy voucher với mã '${voucher.VOUCHER_CODE}'`,
+                error: `Voucher với mã '${voucher.VOUCHER_CODE}' đã bị vô hiệu hóa hoặc không tồn tại`,
             };
         }
 
@@ -502,6 +515,14 @@ const getTotalVoucher = async () => {
     const expire = await Voucher.countDocuments({
       END_DATE: { $gte: today, $lte: sevendayLater },
     });
+
+
+
+    // đếm các voucher đã hết hạn
+    const expired = await Voucher.countDocuments({
+        END_DATE: { $lt: today },
+        });
+
       
     return {
       totalVoucher: totalVoucher,
@@ -516,7 +537,8 @@ const getTotalVoucher = async () => {
         PRODUCT: countProduct,
         GLOBAL: countGlobal,
       },
-      exprire: expire,
+      exprireSoon: expire,
+        expired: expired,
     };
 
 
@@ -627,5 +649,6 @@ module.exports = {
   getTotalVoucher,
   addItemsForVoucher,
   removeItemFromVoucher,
-  getItemsFromVoucher
+  getItemsFromVoucher,
+  isVoucherAvailable,
 };
