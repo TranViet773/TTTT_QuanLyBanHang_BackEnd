@@ -146,7 +146,23 @@ const createVoucher = async (data) => {
             error: "Giá trị giảm giá tối đa không được nhỏ hơn 0",
         };
     }
+    if (TYPE === "PERCENTAGE" && (!MAX_DISCOUNT || MAX_DISCOUNT <= 0)) {
+        return {
+            error: "Giá trị giảm giá tối đa phải lớn hơn 0 cho loại PERCENTAGE",
+        };
+    }
+    if (TYPE === "FIXED_AMOUNT" && MAX_DISCOUNT) {
+        return {
+          error: "Giảm giá cố định không được nhập MAX_DISCOUNT",
+        };
+    }
+    if (TYPE ==="PERCENTAGE" && VALUE > 100) {
+        return {
+            error: "Giá trị giảm giá phần trăm không được lớn hơn 100%",
+        };
 
+    }
+ 
     const newVoucher = new Voucher({
         VOUCHER_CODE,
         TYPE,
@@ -250,11 +266,11 @@ const getAllVouchers = async ({
 
         const total = await Voucher.countDocuments(query);
         const vouchers = await Voucher.find(query)
-            .populate("CREATE_BY")
-            .skip(skip)
-            .limit(limitNumber)
-            .sort({ createdAt: -1 })
-            .lean();
+          .populate("CREATE_BY")
+          .skip(skip)
+          .limit(limitNumber)
+          .sort({ START_DATE: -1 })
+          .lean();
         // vouchers.forEach((voucher) => {
         //   const user = voucher.CREATE_BY;
 
@@ -401,14 +417,14 @@ const updateVoucher = async (voucher, updateData) => {
 const deactivateVoucher = async (voucher) => {
     try {
         const updated = await Voucher.findOneAndUpdate(
-            { VOUCHER_CODE: voucher.VOUCHER_CODE },
+            { VOUCHER_CODE: voucher.VOUCHER_CODE, IS_ACTIVE: true },
             { IS_ACTIVE: false },
             { new: true }
         );
 
         if (!updated) {
             return {
-                error: `Không tìm thấy voucher với mã '${voucher.VOUCHER_CODE}'`,
+                error: `Voucher với mã '${voucher.VOUCHER_CODE}' đã bị vô hiệu hóa hoặc không tồn tại`,
             };
         }
 
@@ -502,6 +518,14 @@ const getTotalVoucher = async () => {
     const expire = await Voucher.countDocuments({
       END_DATE: { $gte: today, $lte: sevendayLater },
     });
+
+
+
+    // đếm các voucher đã hết hạn
+    const expired = await Voucher.countDocuments({
+        END_DATE: { $lt: today },
+        });
+
       
     return {
       totalVoucher: totalVoucher,
@@ -516,7 +540,8 @@ const getTotalVoucher = async () => {
         PRODUCT: countProduct,
         GLOBAL: countGlobal,
       },
-      exprire: expire,
+      exprireSoon: expire,
+        expired: expired,
     };
 
 
