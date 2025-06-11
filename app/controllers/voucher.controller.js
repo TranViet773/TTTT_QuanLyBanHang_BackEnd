@@ -243,6 +243,89 @@ const getTotalVoucher = async (req, res) => {
     });
   }
 };
+
+const addItemsForVoucher = async (req, res) => {
+  try {
+      const {itemIds} = req.body;
+      const {voucherCode} = req.params;
+      const result = await voucherService.addItemsForVoucher(voucherCode, itemIds);
+      if (result.error) {
+        return res.status(500).json({
+          message: result.error,
+          success: false,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        message: "Thêm danh sách sản phẩm được áp dụng vào voucher thành công!",
+        success: true,
+        data: result,
+      });
+  } catch (error) {
+      console.error("Lỗi khi cập nhật danh sách item cho voucher", error);
+      return res.status(500).json({
+        message: "Lỗi khi cập nhật danh sách item cho voucher",
+        success: false,
+        data: null,
+      });
+    }
+};
+
+const removeItemFromVoucher = async (req, res) => {
+  try {
+      const {itemId} = req.body;
+      const {voucherCode} = req.params;
+      const result = await voucherService.removeItemFromVoucher(voucherCode, itemId);
+      if (result.error) {
+        return res.status(500).json({
+          message: result.error,
+          success: false,
+          data: null,
+        });
+      }
+      return res.status(200).json({
+        message: "Hủy áp dụng Voucher cho Item thành côngQ!",
+        success: true,
+        data: result,
+      });
+  } catch (error) {
+      console.error("Lỗi trong quá trình hủy áp dụng Voucher cho Item", error);
+      return res.status(500).json({
+        message: "Lỗi trong quá trình hủy áp dụng Voucher cho Item",
+        success: false,
+        data: null,
+      });
+    }
+};
+
+const getItemsFromVoucher = async (req, res) => {
+  try{
+    const {voucherCode} = req.params;
+    console.log(voucherCode);
+    const response = await voucherService.getItemsFromVoucher(voucherCode);
+    if(response.error){
+      return res.status(500).json({
+        message: response.error,
+        success: false,
+        data: null,
+      }); 
+    }
+    
+    return res.status(200).json({
+      message: "Lấy items từ voucher thành công!",
+      success: true,
+      data: response
+    });
+  } catch(e){
+    console.log(e);
+    return res.status(500).json({
+        message: "Lỗi trong quá trình hủy áp dụng Voucher cho Item",
+        success: false,
+        data: null,
+      });
+  }
+}
+
 module.exports = {
   createVoucher,
   getAllVoucher,
@@ -251,4 +334,7 @@ module.exports = {
   deleteVoucher,
   restoreVoucher,
   getTotalVoucher,
+  addItemsForVoucher,
+  removeItemFromVoucher,
+  getItemsFromVoucher
 };

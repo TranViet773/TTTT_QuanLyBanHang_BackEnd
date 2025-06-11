@@ -1,3 +1,4 @@
+const ItemModel = require("../models/Item.model");
 const Voucher = require("../models/Vouchers.model");
 
 const isVoucherAvailable = (voucher) => {
@@ -553,6 +554,92 @@ const getTotalVoucher = async () => {
 
    }
 }
+
+const addItemsForVoucher = async (voucherCode, itemIds) => {
+    try{
+        if(!voucherCode || itemIds.length<=0){
+            return {error: "Voucher code hoặc danh sách sản phẩm rỗng!"};
+        }
+        const currentDate = new Date();
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher không tồn tại!"};
+        }
+
+        if(voucher.IS_ACTIVE == false 
+            || (voucher.QUANTITY - voucher.NUMBER_USING <= 0)
+            || voucher.END_DATE < currentDate
+            || voucher.START_DATE > currentDate
+        )
+            return {error: "Voucher không còn hợp lệ!"};
+
+        try{
+            for (const itemId of itemIds) {
+                const item = await ItemModel.findById(itemId);
+                if(!item) return {error: `Item có id: ${itemId} không tồn tại!`};
+
+                 // Kiểm tra voucher đã tồn tại trong list voucher của item chưa.
+                // Thực hiện push voucher vào item.
+                if(item.LIST_VOUCHER_ACTIVE.includes(voucher._id)) // nếu có thì nó trả về true;
+                    continue;
+                
+                item.LIST_VOUCHER_ACTIVE.push(voucher._id);
+                await item.save();
+            }
+            return voucher;
+        }catch(e){
+            console.log("Lỗi thêm itemIds vào voucher: ", e);
+            return {error: "Có lỗi khi thêm Item vào voucher!"};
+        }
+    }catch(e){
+        console.log(e);
+        return {error: "Có lỗi khi thêm voucher vào Items!"}
+    }
+}
+
+const removeItemFromVoucher = async (voucherCode, itemId) => {
+    try{
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher không tồn tại!"};
+        }
+
+        const item = await ItemModel.findById(itemId);
+        if(!item) return {error: `Item có id: ${itemId} không tồn tại!`};
+
+        if(item.LIST_VOUCHER_ACTIVE.includes(voucher._id)) {
+            item.LIST_VOUCHER_ACTIVE = item.LIST_VOUCHER_ACTIVE.filter(id => id.toString() !== voucher._id.toString());
+        }
+        await item.save();
+        return voucher;
+    }catch(e){
+        console.log(e);
+        return {error: "Có lỗi trong quá trình hủy áp dụng voucher cho Item. Vui lòng thử lại!"};
+    }
+}
+
+const getItemsFromVoucher = async (voucherCode) => {
+    try{
+        const voucher = await Voucher.findOne({VOUCHER_CODE: voucherCode});
+        if(!voucher){
+            return {error: "Voucher có mã không tồn tại!"};
+        }
+
+        const items = await ItemModel.find({LIST_VOUCHER_ACTIVE: voucher._id});
+        console.log("Danh sách item thuộc voucher: ", items);
+        return {
+            voucher: voucher,
+            items: items
+        }
+    }catch(e){
+        console.log(e);
+        return {
+            error: "Có lỗi khi lấy thông tin item của voucher!"
+        }
+    }
+}
+
+
 module.exports = {
   createVoucher,
   getAllVouchers,
@@ -561,6 +648,9 @@ module.exports = {
   deactivateVoucher,
   restoreVoucher,
   updateNumberUsing,
-  rollbackNumberUsing,
+  rollbackNumberUsing, 
   getTotalVoucher,
+  addItemsForVoucher,
+  removeItemFromVoucher,
+  getItemsFromVoucher
 };
