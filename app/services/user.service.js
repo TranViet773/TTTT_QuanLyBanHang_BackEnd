@@ -548,7 +548,7 @@ const handleLogout = async (userData, refreshToken, accessToken) => {
   }
 };
 
-const handleForgotPassword = async (data) => {
+const handleForgetPassword = async (data) => {
   if (!data.email) {
     return { error: "Vui lòng nhập email." };
   }
@@ -1097,7 +1097,7 @@ module.exports = {
   handleRefreshToken,
   handleLogout,
   updateUser,
-  handleForgotPassword,
+  handleForgetPassword,
   getUsers,
   handleUpdateRoleForUser,
   handleGetUserById,
