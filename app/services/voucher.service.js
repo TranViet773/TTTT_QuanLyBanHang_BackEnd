@@ -25,7 +25,7 @@ const isVoucherAvailable = (voucher) => {
     }
     if (voucher.NUMBER_USING >= voucher.QUANTITY) {
         return {
-            available: voucher.QUANTITY,
+            available: false,
             error: "Voucher đã sử dụng hết",
         };
     }
@@ -37,16 +37,16 @@ const isVoucherAvailable = (voucher) => {
 
 const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     try {
-        for (const voucher of vouchers) {
-            if (voucher.NUMBER_USING > 0) {
-                voucher.NUMBER_USING--;
-                await voucher.save();
-            } else {
-                return {
-                    error: "không thể rollback khi number_using = 0",
-                };
-            }
-        }
+        // for (const voucher of originalVouchers) {
+        //     if (voucher.NUMBER_USING > 0) {
+        //         voucher.NUMBER_USING--;
+        //         await voucher.save();
+        //     } else {
+        //         return {
+        //             error: "Không thể rollback khi number_using = 0",
+        //         };
+        //     }
+        // }
         for (const origin of originalVouchers) {
             for (const backup of backupVouchers) {
                 if (origin._id === backup._id) {
@@ -65,15 +65,15 @@ const rollbackNumberUsing = async (originalVouchers, backupVouchers) => {
     } catch (error) {
         console.error("Lỗi khi rollback số lần sử dụng", error);
         return {
-            error: "KHông thể rollback",
+            error: "Không thể rollback",
         };
     }
 };
 
-const updateNumberUsing = async (voucher, quantity) => {
+const updateNumberUsing = async (voucher, quantity=1) => {
     try {
         const check = isVoucherAvailable(voucher);
-        if (check?.error) {
+        if (check?.available === false) {
             return {
                 error: check.error,
             };
@@ -87,7 +87,7 @@ const updateNumberUsing = async (voucher, quantity) => {
         }
 
         else {
-            voucher.NUMBER_USING += quantity
+            voucher.NUMBER_USING = voucher.NUMBER_USING + quantity
         }
 
         await voucher.save();
@@ -95,13 +95,10 @@ const updateNumberUsing = async (voucher, quantity) => {
         return {
             success: true,
             outOfVoucher,
-            voucher,
         };
     } catch (error) {
         console.error("Lỗi khi cập nhật số lần sử dụng:", error);
-        return {
-            error: "lỗi khi cập nhật số lần sử dụng",
-        };
+        throw new Error ("Lỗi khi cập nhật số lần sử dụng")
     }
 };
 
@@ -652,5 +649,6 @@ module.exports = {
   getTotalVoucher,
   addItemsForVoucher,
   removeItemFromVoucher,
-  getItemsFromVoucher
+  getItemsFromVoucher,
+  isVoucherAvailable,
 };

@@ -60,7 +60,8 @@ const salesInvoices = new mongoose.Schema({
             PRODUCT_VOUCHER_ID: {
                 type: mongoose.Schema.Types.ObjectId,
             }
-        })
+        }),
+        _id: false,
     }],
 
     TOTAL_AMOUNT: {
@@ -92,8 +93,8 @@ const salesInvoices = new mongoose.Schema({
         type: String
     },
 
-    TOTAL_WITH_TAX_EXTRA_CODE: {
-        type: String,
+    TOTAL_WITH_TAX_EXTRA_FEE: {
+        type: Number,
         min: [0, 'Số tiền (total) không thể là số âm.'],
     },
 
