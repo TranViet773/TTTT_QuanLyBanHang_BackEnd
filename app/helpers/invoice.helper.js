@@ -36,8 +36,6 @@ const rollbackItems = async (count, originalItems, backupItems) => {
     }
 }
 
-
-
 module.exports = {
     getItemDocument,
     rollbackItems
