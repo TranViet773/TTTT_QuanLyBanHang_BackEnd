@@ -677,8 +677,8 @@ const updateUser = async (userId, data, deviceId) => {
       !city ||
       !district ||
       !ward ||
-      !address1 ||
-      !address2 ||
+      // !address1 ||
+      // !address2 ||
       !state
     ) {
       return { error: "Vui lòng nhập đầy đủ thông tin địa chỉ." };
