@@ -1098,11 +1098,18 @@ const deleteItems = async (data) => {
             return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
         }
 
-        if (Array.isArray(items)) {
-            console.log(items)
+        // console.log("items:", items)
+
+        console.log(Array.isArray(items))
+
+        if (items && Array.isArray(items)) {
+            console.log("items:", items)
             for (const item of items) {
                 for(let index=0; index < invoice.ITEMS.length; index++) {
-                    if (item === invoice.ITEMS[index].ITEM_CODE) {
+                    console.log("item:", item)
+                    console.log("invoice.ITEMS[index].ITEM_CODE: ", invoice.ITEMS[index].ITEM_CODE)
+                    if (item.trim().toString() === invoice.ITEMS[index].ITEM_CODE.trim().toString()) {
+                        console.log("flagx1")
                         invoice.ITEMS.splice(index, 1)
                         break
                     }
@@ -1111,6 +1118,7 @@ const deleteItems = async (data) => {
         }
 
         else {
+            console.log("items:", items)
             for(let index=0; index < invoice.ITEMS.length; index++) {
                 if (items === invoice.ITEMS[index].ITEM_CODE) {
                     invoice.ITEMS.splice(index, 1)
@@ -1120,7 +1128,7 @@ const deleteItems = async (data) => {
         }
 
         if (invoice.ITEMS.length < 1) {
-            deleteInvoice(null, invoice)
+            await deleteInvoice(null, invoice)
             return {message: "Xóa hóa đơn thành công."}
         }
         else {
@@ -1128,13 +1136,13 @@ const deleteItems = async (data) => {
             invoice.TOTAL_AMOUNT = 0
 
             for (const item of invoice.ITEMS) {
-                console.log(item)
+                // console.log(item)
                 invoice.TOTAL_AMOUNT += item.TOTAL_PRICE
             }
 
             console.log(invoice.TOTAL_AMOUNT)
 
-            invoice.TAX = invoice.TAX ? invoice.TAX/100 * invoice.TOTAL_AMOUNT : 0
+            const taxValue = invoice.TAX ? invoice.TAX/100 * invoice.TOTAL_AMOUNT : 0
 
             if (invoice.VOUCHER_GLOBAL_ID) {
                 const voucher = await Voucher.findById(invoice.VOUCHER_GLOBAL_ID)
@@ -1145,10 +1153,11 @@ const deleteItems = async (data) => {
                                                         invoice.TOTAL_AMOUNT - discount
             }
 
-            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + invoice.TAX + invoice.EXTRA_FEE
-
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + taxValue + invoice.EXTRA_FEE
+            
+            // invoice.markModified('ITEMS');
             await invoice.save()
-            return invoice
+            return await handleInvoiceDataForResponse(invoice)
         }
 
     } catch (error) {
