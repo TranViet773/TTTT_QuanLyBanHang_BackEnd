@@ -326,11 +326,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, soldBy, customer, fromDate, toDate} = query
+        const {page, limits, search, minPrice, maxPrice, fromDate, toDate} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
-        const limitNumber = Math.max(parseInt(limit) || 10, 1);
+        const limitNumber = Math.max(parseInt(limits) || 10, 1);
         // tính toán số lượng bản ghi cần bỏ qua
         const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
 
@@ -377,17 +377,9 @@ const getAllInvoices = async (query) => {
                 $or: [
                     { INVOICE_CODE: { $regex: search, $options: 'i' } },
                     { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
-                    { 'CUSTOMER.USERNAME' : { $regex: search, $option: 'i' } }
+                    { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
                 ]
             })
-        }
-
-        if (soldBy?.trim()) {
-            matchConditions.push({ SOLD_BY: new ObjectId(soldBy) })
-        }
-
-        if (customer?.trim()) {
-            matchConditions.push({ CUSTOMER_ID: new ObjectId(customer) })
         }
 
         if (fromDate?.trim()) {
@@ -395,20 +387,64 @@ const getAllInvoices = async (query) => {
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
 
-            let endDate
             if (toDate?.trim()) {
-                endDate = new Date(toDate)
-            } else {
-                endDate = new Date(fromDate)
-            }
-            endDate.setHours(23,59,59,999)
+                const endDate = new Date(toDate)
+                endDate.setHours(23,59,59,999)
 
-            matchConditions.push({
-                SELL_DATE: {
-                    $gte: startDate,
-                    $lte: endDate
-                }
-            })
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate,
+                        $lte: endDate
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate
+                    }
+                })
+            }
+        }
+
+        else {
+            if (toDate?.trim()) {
+                const endDate = newDate(endDate)
+                endDate.setHours(23,59,59,999)
+
+                matchConditions.push({
+                    SELL_DATE: {
+                        $lte: endDate
+                    }
+                })
+            }
+        }
+
+        if (minPrice?.trim()) {
+
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice),
+                        $lte: Number(maxPrice),
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice)
+                    }
+                })
+            }
+        }
+
+        else {
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $lte: Number(maxPrice)
+                    }
+                })
+            }
         }
 
         if (matchConditions.length > 0) {
@@ -438,7 +474,7 @@ const getAllInvoices = async (query) => {
         pipeline.push({ $skip: skip })
         pipeline.push({ $limit: limitNumber })
 
-        // console.log(JSON.stringify(pipeline, null, 2));
+        console.log(JSON.stringify(pipeline, null, 2));
 
         const [totalResult, results] = await Promise.all([
             SalesInvoice.aggregate(totalPipeline),
@@ -450,7 +486,7 @@ const getAllInvoices = async (query) => {
         return {
             total,
             page: pageNumber,
-            limit: limitNumber,
+            limits: limitNumber,
             results: results
         }
 
@@ -472,7 +508,6 @@ const getInvoiceByCode = async (invoiceCode) => {
         throw new Error("Lỗi khi truy vấn dữ liệu hóa đơn.")
     }
 }
-
 
 const updateItemForExporting = async (items, originalItems, backupItems, now) => {
 
