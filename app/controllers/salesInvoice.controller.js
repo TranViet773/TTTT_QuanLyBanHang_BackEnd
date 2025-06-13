@@ -131,7 +131,7 @@ const updateInvoice = async (req, res) => {
 const deleteItems = async (req, res) => {
     try {
         const data = req.params
-        data.items = req.body
+        data.items = req.body.items
 
         const response = await salesInvoiceService.deleteItems(data)
 
