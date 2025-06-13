@@ -616,7 +616,7 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
     return {totalAmount, count, vouchers, backupVouchers, items}
 }
 
-const updateInvoiceItems = async (items, originalItems) => {
+const   updateInvoiceItems = async (items, originalItems) => {
     let loopFlag = false
     let totalAmount = 0
     for(const addItem of items) {   
@@ -975,7 +975,6 @@ const updateInvoice = async (data) => {
 
     const {items, invoiceCode, status} = data
     const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
-    const backupLastUpdated = invoice.LAST_UPDATED
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
@@ -990,6 +989,7 @@ const updateInvoice = async (data) => {
     }
 
     const backupInvoiceItems = invoice.ITEMS.map(item => ({...item.toObject?.() || item}))
+    const backupLastUpdated = invoice.UPDATED_AT || null
 
     try {
 
@@ -1004,14 +1004,24 @@ const updateInvoice = async (data) => {
                 return { error: updatingItems.error }
             }
 
-            for (const origin of invoice.ITEMS) {
-                for (const newItems of items)  {
+            for (const newItems of items) {
+                let flag = false
+
+                for (let origin of invoice.ITEMS) {
                     if (newItems.ITEM_CODE === origin.ITEM_CODE) {
                         origin = newItems
+                        flag = true
                         break
                     }
                 }
-                totalAmount += origin.TOTAL_AMOUNT
+
+                if (flag === false) {
+                    invoice.ITEMS.push(newItems)
+                }
+            }
+
+            for (const item of invoice.ITEMS) {
+                totalAmount += item.TOTAL_PRICE
             }
         }
 
@@ -1064,7 +1074,7 @@ const updateInvoice = async (data) => {
             }
         }
         
-        invoice.LAST_UPDATED = backupLastUpdated
+        invoice.UPDATED_AT = backupLastUpdated
         
         await invoice.save()
 
@@ -1088,39 +1098,62 @@ const deleteItems = async (data) => {
             return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
         }
 
-        // if (Array.isArray(items)) {
-        //     console.log(items)
-        //     for (const item of items) {
-        //         for(let index=0; index < invoice.ITEMS.length; index++) {
-        //             if (item !== invoice.ITEMS[index].ITEM_CODE) {
-        //                 invoice.ITEMS.splice(index, 1)
-        //                 break
-        //             }
-        //         } 
-        //     }
-        // }
+        if (Array.isArray(items)) {
+            console.log(items)
+            for (const item of items) {
+                for(let index=0; index < invoice.ITEMS.length; index++) {
+                    if (item === invoice.ITEMS[index].ITEM_CODE) {
+                        invoice.ITEMS.splice(index, 1)
+                        break
+                    }
+                } 
+            }
+        }
 
-        // else {
+        else {
             for(let index=0; index < invoice.ITEMS.length; index++) {
-                if (items !== invoice.ITEMS[index].ITEM_CODE) {
+                if (items === invoice.ITEMS[index].ITEM_CODE) {
                     invoice.ITEMS.splice(index, 1)
                     break
                 }
             }
-        // }
+        }
 
         if (invoice.ITEMS.length < 1) {
             deleteInvoice(null, invoice)
             return {message: "Xóa hóa đơn thành công."}
         }
         else {
+            
+            invoice.TOTAL_AMOUNT = 0
+
+            for (const item of invoice.ITEMS) {
+                console.log(item)
+                invoice.TOTAL_AMOUNT += item.TOTAL_PRICE
+            }
+
+            console.log(invoice.TOTAL_AMOUNT)
+
+            invoice.TAX = invoice.TAX ? invoice.TAX/100 * invoice.TOTAL_AMOUNT : 0
+
+            if (invoice.VOUCHER_GLOBAL_ID) {
+                const voucher = await Voucher.findById(invoice.VOUCHER_GLOBAL_ID)
+
+                const discount = voucher.TYPE === 'PERCENTAGE' ? invoice.TOTAL_AMOUNT * voucher.VALUE/100 : voucher.VALUE
+                invoice.TOTAL_AMOUNT = voucher.MAX_DISCOUNT && discount > voucher.MAX_DISCOUNT ? 
+                                                        invoice.TOTAL_AMOUNT - voucher.MAX_DISCOUNT : 
+                                                        invoice.TOTAL_AMOUNT - discount
+            }
+
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + invoice.TAX + invoice.EXTRA_FEE
+
             await invoice.save()
             return invoice
         }
 
     } catch (error) {
         console.log(error)
-        throw new Error ("Lỗi xảy ra khi xóa item(s) trong hóa đơn.")
+        throw new Error ("Lỗi xảy ra khi xóa item trong hóa đơn.")
     }
 }
 
