@@ -92,9 +92,9 @@ const updateInvoice = async (req, res) => {
     try {
 
         const data = req.body
-
         data.invoiceCode = req.params.invoiceCode
         data.userId = req.user
+        
         const response = await salesInvoiceService.updateInvoice(data)
 
         if (response?.warning) {
@@ -114,7 +114,7 @@ const updateInvoice = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: "Cập nhật trạng thái hóa đơn thành công.",
+            message: "Cập nhật hóa đơn thành công.",
             success: true,
             data: response
         })
@@ -152,7 +152,7 @@ const deleteItems = async (req, res) => {
         }
 
         return res.status(200).json({
-            message: "Cập nhật chi tiết hóa đơn thành công.",
+            message: "Xoá sản phẩm thành công.",
             success: true,
             data: response
         })
