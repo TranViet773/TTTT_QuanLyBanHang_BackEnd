@@ -882,6 +882,23 @@ const createInvoice = async (data) => {
     }
 }
 
+const checkValidVouchers = async (items) => {
+    let valid = true
+
+    for (const item of items) {
+        if (item.PRODUCT_VOUCHER_ID !== null) {
+            const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
+            const isAvailable = voucherService.isVoucherAvailable(voucher)
+            if (isAvailable?.error) {
+                item.PRODUCT_VOUCHER_ID = null
+                valid = false
+            }
+        }        
+    }
+
+    return valid
+}
+
 const updateInvoiceStatus = async (invoice, status) => {
     // const {invoiceCode, status} = data
     const now = new Date()
@@ -952,23 +969,6 @@ const updateInvoiceStatus = async (invoice, status) => {
     } catch (error) {
         throw new Error(error)
     }
-}
-
-const checkValidVouchers = async (items) => {
-    let valid = true
-
-    for (const item of items) {
-        if (item.PRODUCT_VOUCHER_ID !== null) {
-            const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
-            const isAvailable = voucherService.isVoucherAvailable(voucher)
-            if (isAvailable?.error) {
-                item.PRODUCT_VOUCHER_ID = null
-                valid = false
-            }
-        }        
-    }
-
-    return valid
 }
 
 const updateInvoice = async (data) => {
@@ -1073,35 +1073,82 @@ const updateInvoice = async (data) => {
     }
 }
 
-const deleteItem = async (data) => {
+const deleteItems = async (data) => {
     const {items, invoiceCode} = data
     
-    try {           
-        if (Array.isArray(items)) {
-            const invoice = await SalesInvoice.findOneAndUpdate(
-                { INVOICE_CODE: invoiceCode },
-                { ITEMS: items },
-                { new: true  }  
-            )
+    try {
+        
+        const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
 
-            await invoice.save()
+        if (!invoice) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode}`}
         }
 
-        else {
-            const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
-            for(let i=0; i < invoice.ITEMS.length; i++) {
-                if (invoice[i].ITEM_CODE === items.ITEM_CODE) {
-                    invoice.ITEMS.splice(index, 1)  // xóa phần tử trong mở theo index
+        if (invoice.STATUS !== 'DRAFT') {
+            return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
+        }
+
+        // if (Array.isArray(items)) {
+        //     console.log(items)
+        //     for (const item of items) {
+        //         for(let index=0; index < invoice.ITEMS.length; index++) {
+        //             if (item !== invoice.ITEMS[index].ITEM_CODE) {
+        //                 invoice.ITEMS.splice(index, 1)
+        //                 break
+        //             }
+        //         } 
+        //     }
+        // }
+
+        // else {
+            for(let index=0; index < invoice.ITEMS.length; index++) {
+                if (items !== invoice.ITEMS[index].ITEM_CODE) {
+                    invoice.ITEMS.splice(index, 1)
                     break
                 }
             }
-            
+        // }
+
+        if (invoice.ITEMS.length < 1) {
+            deleteInvoice(null, invoice)
+            return {message: "Xóa hóa đơn thành công."}
+        }
+        else {
             await invoice.save()
+            return invoice
         }
 
     } catch (error) {
         console.log(error)
         throw new Error ("Lỗi xảy ra khi xóa item(s) trong hóa đơn.")
+    }
+}
+
+const deleteInvoice = async (invoiceCode=null, invoice=null) => {
+    try {
+        if (invoice) {
+            if (invoice.STATUS !== 'DRAFT') {
+                return {error: `Không thể xóa hóa đơn ở trạng thái ${invoice.STATUS}.`}
+            }
+
+            await SalesInvoice.findByIdAndDelete(invoice._id)
+            return
+        }
+
+        const invoiceData = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
+        if (!invoiceData) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
+        }
+        if (invoiceData.STATUS !== 'DRAFT') {
+            return {error: `Không thể xóa hóa đơn ở trạng thái ${invoiceData.STATUS}.`}
+        }
+
+        await SalesInvoice.findByIdAndDelete(invoiceData._id)
+        return
+
+    } catch(error) {
+        console.log(error)
+        throw new Error("Lỗi xảy ra khi xóa hóa đơn nháp.")
     }
 }
 
@@ -1111,5 +1158,6 @@ module.exports = {
     createInvoice,
     updateInvoiceStatus,
     updateInvoice,
-    deleteItem,
+    deleteItems,
+    deleteInvoice
 }
