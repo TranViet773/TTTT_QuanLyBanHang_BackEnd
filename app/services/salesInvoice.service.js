@@ -383,7 +383,6 @@ const getAllInvoices = async (query) => {
         }
 
         if (fromDate?.trim()) {
-
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
 
@@ -408,7 +407,7 @@ const getAllInvoices = async (query) => {
 
         else {
             if (toDate?.trim()) {
-                const endDate = newDate(endDate)
+                const endDate = new Date(endDate)
                 endDate.setHours(23,59,59,999)
 
                 matchConditions.push({
