@@ -26,9 +26,42 @@ const salesInvoices = new mongoose.Schema({
         enum: ['DRAFT', 'CONFIRMED', 'CANCELLED', 'PAYMENTED'],
     },
 
-    DELIVERY_ADDRESS: {
+    DELIVERY_INFORMATION: {
         type: new mongoose.Schema({
-            
+            NAME: {
+                type: String
+            },
+            ADDRESS: {
+                type: new mongoose.Schema({
+                    COUNTRY: {
+                        type: String,
+                    },
+                    CITY: {
+                        type: String,
+                    },
+                    DISTRICT: {
+                        type: String,
+                    },
+                    WARD: {
+                        type: String,
+                    },
+                    DETAIL: {
+                        type: String
+                    },
+                }),
+                _id: false,
+                required: true,
+            },
+            PHONE_NUMBER: {
+                type: String,
+                required: true,
+                match: [/^\d+$/, 'Chỉ được chứa ký tự số']
+            },
+            EMAIL: {
+                type: String,
+                lowercase: true,
+                match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
+            }
         }),
         _id: false
     },

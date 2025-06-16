@@ -216,6 +216,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
+                    DELIVERY_INFORMATION: '$DELIVER_INFORMATION',
                     NOTE: '$NOTE',
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
@@ -856,7 +857,8 @@ const updateInvoiceItems = async (items, originalItems) => {
 
 const createInvoice = async (data) => {
     const {status, soldBy, customerId, note, items, voucherGlobalId, 
-            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod,
+            name, country, city, district, ward, detail, phoneNumber, email} = data
     
     if (!status || !soldBy || !items || !paymentMethod || !purchaseMethod) {
         return {error: "Vui lòng nhập đầy đủ thông tin cần thiết cho hóa đơn."}
@@ -866,9 +868,19 @@ const createInvoice = async (data) => {
         return { error: `Status ${status} không hợp lệ.`}
     }
 
+    if (purchaseMethod === 'ONLINE' || purchaseMethod === 'DELIVERY' || purchaseMethod === 'PRE_ORDER') {
+        if (!name || !country || !city || !district || !ward || !phoneNumber || !email) {
+            return { error: 'Vui lòng nhập đầy đủ thông tin đặt hàng.' }
+        }
+    }
+
     try {
-        if(!await Account.findOne({ USER_ID: soldBy })) {
-            return {error: "Người dùng không tồn tại."}
+        if(soldBy && !await Account.findOne({ USER_ID: soldBy })) {
+            return { error: "Nhân viên không tồn tại." }
+        }
+
+        if (customerId && !await Account.findOne({ USER_ID: customerId })) {
+            return { error: "Khách hàng không tồn tại." }
         }
         
         // lấy các document item tương ứng
@@ -986,8 +998,20 @@ const createInvoice = async (data) => {
             INVOICE_CODE: now.getTime(),
             CUSTOMER_ID: customerId || null,
             SELL_DATE: now,
-            SOLD_BY: soldBy,
+            SOLD_BY: soldBy || null,
             STATUS: status,
+            DELIVERY_INFORMATION: {
+                NAME: name,
+                ADDRESS: {
+                    COUNTRY: country,
+                    CITY: city,
+                    DISTRICT: district,
+                    WARD: ward,
+                    DETAIL: detail,
+                },
+                PHONE_NUMBER: phoneNumber,
+                EMAIL: email,
+            },
             NOTE: note,
             ITEMS: items,
             TOTAL_AMOUNT: totalAmount,
