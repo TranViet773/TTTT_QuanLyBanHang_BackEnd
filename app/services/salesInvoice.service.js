@@ -289,7 +289,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     console.log("type: ", type)
                     console.log("item type:", itemType)
                     if (detail.ITEM_TYPE.equals(type._id)) {
-                        detail.ITEM_TYPE = type.ITEM_TYPE_NAME
+                        detail.ITEM_TYPE_NAME = type.ITEM_TYPE_NAME
                     }
                 }
 
