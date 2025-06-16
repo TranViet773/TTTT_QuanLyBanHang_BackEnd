@@ -209,7 +209,9 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 $project: {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
-                    CUSTOMER: '$CUSTOMER.USERNAME',
+                    CUSTOMER: {
+                        USERNAME: '$CUSTOMER.USERNAME',
+                    },
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
@@ -232,7 +234,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     CREATED_AT: '$CREATED_AT',
                     UPDATED_AT: '$UPDATED_AT',
                     LIST_VOUCHER_ACTIVE: '$LIST_VOUCHER_ACTIVE',
-                    LIST_ITEM_TYPE: '$LIST_ITEM_TYPE'
+                    LIST_ITEM_TYPE: '$LIST_ITEM_TYPE',
                 }
             }
         ]
@@ -368,6 +370,7 @@ const getAllInvoices = async (query) => {
         const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
 
         const matchConditions = []
+        const now = new Date()
 
         // tạo pipeline join bảng
         const pipeline = [        
@@ -400,6 +403,115 @@ const getAllInvoices = async (query) => {
                 $unwind: {
                     path: '$CUSTOMER',
                     preserveNullAndEmptyArrays: true
+                }
+            },
+
+            {             
+                $lookup: {
+                    from: "users",
+                    let: { 
+                        userId: "$CUSTOMER_ID",
+                        now: now,
+                     },
+                    // pipeline: [
+                    //     {
+                    //         $match: { 
+                    //             $expr: {$eq: ["$_id", "$$userId"]}
+                    //         },
+                    //     },
+                    //     {
+                    //         $unwind: {
+                    //             path: "$LIST_CONTACT",
+                    //             preserveNullAndEmptyArrays: true,
+                    //         }
+                    //     },
+                    //     {
+                    //         $match: {
+                    //             $expr: { 
+                    //                 $and: [
+                    //                     { $gte: ["$LIST_CONTACT.FROM_DATE", "$$now"] },
+                    //                     { $or:[
+                    //                         { $lt: ["$LIST_CONTACT.THRU_DATE", "$$now"] },
+                    //                         { $eq: ["$LIST_CONTACT.THRU_DATE", null] }
+                    //                     ] }
+                    //                 ]
+                    //             }
+                    //         }
+                    //     },
+                    //     // {
+                    //     //     $project: {
+                    //     //         LIST_CONTACT: 1,
+                    //     //         _id: 0
+                    //     //     }
+                    //     // }
+                    // ],
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                $and: [
+                                    { $eq: ["$_id", "$$userId"] },
+                                    // 
+                                ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "CUSTOMER_INFO"
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CUSTOMER_INFO',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+
+            {
+                $addFields: {
+                    CUSTOMER_INFO: {
+                        $map: {
+                            input: '$CUSTOMER_INFO',
+                            as: "info",
+                            in: {
+                                $mergeObjects: [
+                                    '$$info',
+                                    {
+                                        $let: {
+                                            vars: {
+                                                matchedItem: {
+                                                    $arrayElemAt: [{
+                                                        $filter: {
+                                                            input: "$CUSTOMER_INFO.LIST_CONTACT",
+                                                            as: 'contact',
+                                                            cond: {
+                                                                $and: [
+                                                                { $gte: ["$$contact.FROM_DATE", now] },
+                                                                {
+                                                                    $or: [
+                                                                        { $lt: ["$$contact.THRU_DATE", now] },
+                                                                        { $eq: ["$$contact.THRU_DATE", null] }
+                                                                    ]
+                                                                }
+                                                                ]
+                                                            }
+                                                        }
+                                                    }, 0]
+                                                }
+                                            },
+                                            in: {
+                                                CONTACT: {
+                                                    FULL_NAME: '$$matchedItem.FULL_NAME'
+                                                }
+                                            }
+                                        }    
+                                        
+                                    }
+                                ]
+                            }
+                        }
+                    }
                 }
             }
         ]
@@ -509,13 +621,18 @@ const getAllInvoices = async (query) => {
             $project: {
                 _id: 0,
                 INVOICE_CODE: "$INVOICE_CODE",
-                CUSTOMER: "$CUSTOMER.USERNAME",
+                CUSTOMER: {
+                    USERNAME: "$CUSTOMER.USERNAME",
+                    // EMAIL: "$CUSTOMER"
+                },
                 SELL_DATE: "$SELL_DATE",
                 SOLD_BY: "$STAFF.USERNAME",
                 STATUS: "$STATUS",
                 TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX_EXTRA_FEE",
                 PAYMENT_METHOD: "$PAYMENT_METHOD",
-                PURCHASE_METHOD: "$PURCHASE_METHOD"
+                PURCHASE_METHOD: "$PURCHASE_METHOD",
+                CUSTOMER_INFO: "$CUSTOMER_INFO",
+                CONTACT_INFO: "$CONTACT_INFO"
             }
         })
         pipeline.push({ $sort: { SELL_DATE: -1 } })
