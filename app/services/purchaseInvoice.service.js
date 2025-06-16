@@ -5,6 +5,7 @@ const User = require("../models/User.model")
 const authHelper = require("../helpers/auth.helper")
 const invoiceHelper = require('../helpers/invoice.helper')
 const { ObjectId } = require('mongodb')
+const purcharseInvoice = require("../models/PurchaseInvoices.model");
 
 const handleInvoiceDataForResponse = async (invoice) => {
     console.log(invoice)
@@ -569,9 +570,82 @@ const updateInvoice = async (data) => {
     }
 }
 
+const deleteItems = async (data) => {
+    const {items, invoiceCode} = data
+    
+    try {
+        
+        const invoice = await purcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+
+        if (!invoice) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode}`}
+        }
+
+        const validStatus = invoiceHelper.isValidStatus(invoice.STATUS);
+
+        if (validStatus.STATUS_NAME !== 'DRAFT') {
+            return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
+        }
+
+        for(let index=0; index < invoice.ITEMS.length; index++) {
+            if (items !== invoice.ITEMS[index].ITEM_CODE) {
+                invoice.ITEMS.splice(index, 1)
+                break
+            }
+        }
+        
+        console.log(invoice.ITEMS)
+        if (invoice.ITEMS.length < 1) {
+            const response = deleteInvoice(null, invoice)
+            console.log(response);
+            return {message: "Xóa hóa đơn thành công."}
+        }
+        else {
+            await invoice.save()
+            return invoice
+        }
+
+    } catch (error) {
+        console.log(error)
+        throw new Error ("Lỗi xảy ra khi xóa item(s) trong hóa đơn.")
+    }
+}
+
+const deleteInvoice = async (invoiceCode=null, invoice=null) => {
+    try {
+
+        if (invoice) {
+            const validStatus = invoiceHelper.isValidStatus(invoice.STATUS);
+            if (validStatus.STATUS_NAME !== 'DRAFT') {
+                return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
+            }
+
+            await purcharseInvoice.findByIdAndDelete(invoice._id)
+            return
+        }
+
+        const invoiceData = await purcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const validStatus = invoiceHelper.isValidStatus(invoiceData.STATUS);        
+        if (!invoiceData) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
+        }
+        if (validStatus.STATUS_NAME !== 'DRAFT') {
+            return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
+        }
+
+        await purcharseInvoice.findByIdAndDelete(invoiceData._id)
+        return
+
+    } catch(error) {
+        console.log(error)
+        throw new Error("Lỗi xảy ra khi xóa hóa đơn nháp.")
+    }
+}
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
+    deleteItems,
+    deleteInvoice
 }
