@@ -26,6 +26,13 @@ const salesInvoices = new mongoose.Schema({
         enum: ['DRAFT', 'CONFIRMED', 'CANCELLED', 'PAYMENTED'],
     },
 
+    DELIVERY_ADDRESS: {
+        type: new mongoose.Schema({
+            
+        }),
+        _id: false
+    },
+
     NOTE: {
         type: String,
     },

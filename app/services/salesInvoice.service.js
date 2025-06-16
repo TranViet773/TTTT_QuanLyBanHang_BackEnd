@@ -121,6 +121,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                             },
                                             in: {
                                                 VOUCHER: {
+                                                    _id: '$$matchedVoucher._id',
                                                     VOUCHER_CODE: '$$matchedVoucher.VOUCHER_CODE',
                                                     TYPE: '$$matchedVoucher.TYPE',
                                                     VALUE: '$$matchedVoucher.VALUE',
@@ -219,6 +220,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
                     GLOBAL_VOUCHER: {
+                        _id: '$VOUCHER._id',
                         VOUCHER_CODE: '$VOUCHER.VOUCHER_CODE',
                         TYPE: '$VOUCHER.TYPE',
                         VALUE: '$VOUCHER.VALUE',
@@ -413,46 +415,13 @@ const getAllInvoices = async (query) => {
                         userId: "$CUSTOMER_ID",
                         now: now,
                      },
-                    // pipeline: [
-                    //     {
-                    //         $match: { 
-                    //             $expr: {$eq: ["$_id", "$$userId"]}
-                    //         },
-                    //     },
-                    //     {
-                    //         $unwind: {
-                    //             path: "$LIST_CONTACT",
-                    //             preserveNullAndEmptyArrays: true,
-                    //         }
-                    //     },
-                    //     {
-                    //         $match: {
-                    //             $expr: { 
-                    //                 $and: [
-                    //                     { $gte: ["$LIST_CONTACT.FROM_DATE", "$$now"] },
-                    //                     { $or:[
-                    //                         { $lt: ["$LIST_CONTACT.THRU_DATE", "$$now"] },
-                    //                         { $eq: ["$LIST_CONTACT.THRU_DATE", null] }
-                    //                     ] }
-                    //                 ]
-                    //             }
-                    //         }
-                    //     },
-                    //     // {
-                    //     //     $project: {
-                    //     //         LIST_CONTACT: 1,
-                    //     //         _id: 0
-                    //     //     }
-                    //     // }
-                    // ],
                     pipeline: [
                         {
                             $match: {
                                 $expr: {
-                                $and: [
-                                    { $eq: ["$_id", "$$userId"] },
-                                    // 
-                                ]
+                                    $and: [
+                                        { $eq: ["$_id", "$$userId"] },
+                                    ]
                                 }
                             }
                         }
