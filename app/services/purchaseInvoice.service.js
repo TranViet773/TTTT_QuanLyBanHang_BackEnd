@@ -642,11 +642,11 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
                 return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
             }
 
-            await PurcharseInvoice.findByIdAndDelete(invoice._id)
+            await PurchaseInvoice.findByIdAndDelete(invoice._id)
             return
         }
 
-        const invoiceData = await PurcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const invoiceData = await PurchaseInvoice.findOne({INVOICE_CODE: invoiceCode})
         const validStatus = authHelper.isValidInfo(invoiceData.STATUS);        
         if (!invoiceData) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
@@ -655,7 +655,7 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
             return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
         }
 
-        await PurcharseInvoice.findByIdAndDelete(invoiceData._id)
+        await PurchaseInvoice.findByIdAndDelete(invoiceData._id)
         return
 
     } catch(error) {

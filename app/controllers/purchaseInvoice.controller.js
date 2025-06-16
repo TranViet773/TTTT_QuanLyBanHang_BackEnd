@@ -122,6 +122,8 @@ const updateInvoice = async (req, res) => {
     }
 }
 
+
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
