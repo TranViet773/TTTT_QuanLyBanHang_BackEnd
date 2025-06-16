@@ -670,4 +670,6 @@ module.exports = {
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
+    deleteInvoice,
+    deleteItems
 }
