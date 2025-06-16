@@ -69,7 +69,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                 ITEM_DETAIL: {
                                                     ITEM_NAME: "$$matchedItem.ITEM_NAME",
                                                     ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
-                                                    AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
+                                                    AVATAR_IMAGE_URL: '$$matchedItem.AVATAR_IMAGE_URL',
                                                     ITEM_TYPE: '$$matchedItem.ITEM_TYPE',
                                                     IS_ACTIVE: '$$matchedItem.IS_ACTIVE',
                                                     LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE',
@@ -232,6 +232,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     CREATED_AT: '$CREATED_AT',
                     UPDATED_AT: '$UPDATED_AT',
                     LIST_VOUCHER_ACTIVE: '$LIST_VOUCHER_ACTIVE',
+                    LIST_ITEM_TYPE: '$LIST_ITEM_TYPE'
                 }
             }
         ]
@@ -246,11 +247,16 @@ const handleInvoiceDataForResponse = async (invoice) => {
         ])
 
         const listVoucher = response[0].LIST_VOUCHER_ACTIVE
+        const listItemType = response[0].LIST_ITEM_TYPE
+
+        console.log("list item type: ", listItemType)
+
         if(listVoucher){
             for (let i = 0; i < response[0].ITEMS.length; i++) {
                 const item = response[0].ITEMS[i]
 
                 const detail = item.ITEM_DETAIL
+                console.log(detail)
 
                 const vouchers = detail.LIST_VOUCHER_ACTIVE
 
@@ -275,12 +281,28 @@ const handleInvoiceDataForResponse = async (invoice) => {
                         }
                     }
                 }
+
+                const itemType = detail.ITEM_TYPE
+                for (const type of listItemType) {
+                    console.log("type: ", type)
+                    console.log("item type:", itemType)
+                    if (detail.ITEM_TYPE.equals(type._id)) {
+                        detail.ITEM_TYPE = type.ITEM_TYPE_NAME
+                    }
+                }
+
+                for(const key of Object.keys(detail)) {
+                    item[key] = detail[key]
+                }
+
+                delete item.ITEM_DETAIL
             }
         }
         else console.log("null")    
         
 
         delete response[0].LIST_VOUCHER_ACTIVE
+        delete response[0].LIST_ITEM_TYPE
 
         if (invoice.CUSTOMER_ID) {
             const user = await User.findById(invoice.CUSTOMER_ID)
@@ -388,7 +410,7 @@ const getAllInvoices = async (query) => {
                 matchConditions.push({ 'STAFF.USERNAME': { $regex: seller, $options: 'i' } },)
             }
 
-            else if (buyer?.trim() && seller === true) {
+            else if (buyer?.trim() && buyer === true) {
                 matchConditions.push({ 'CUSTOMER.USERNAME': { $regex: buyer, $options: 'i' } },)
             }
 
@@ -1265,6 +1287,7 @@ const statisticInvoiceBasedOnStatus = async () => {
             {
                 $project: {
                     status: "$_id",
+                    _id: 0,
                     count: 1
                 }
             }
