@@ -211,6 +211,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
                     CUSTOMER: {
+                        CUSTOMER_ID: '$CUSTOMER_ID',
                         USERNAME: '$CUSTOMER.USERNAME',
                     },
                     SELL_DATE: '$SELL_DATE',
