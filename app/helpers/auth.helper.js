@@ -22,6 +22,7 @@ const isValidInfo = (listInfo) => {
     )
 }
 
+
 const getSecretKey = async (userId, deviceId) => {
     const accountDevice = await AccountDeviceModel.findOne({ USER_ID: userId});
     if(!accountDevice) {

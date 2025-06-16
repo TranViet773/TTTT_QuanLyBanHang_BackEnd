@@ -36,7 +36,18 @@ const rollbackItems = async (count, originalItems, backupItems) => {
     }
 }
 
+const isValidStatus = (listStatus) => {
+    const now = new Date()
+    console.log(listStatus)
+    // tạo bản sao và đảo ngược mảng trước khi duyệt
+    return listStatus.slice().reverse().find(status =>
+        status.FROM_DATE <= now &&
+        (status.THRU_DATE === null || status.THRU_DATE > now)
+    )
+};
+
 module.exports = {
     getItemDocument,
-    rollbackItems
+    rollbackItems,
+    isValidStatus
 }

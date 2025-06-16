@@ -5,6 +5,7 @@ const UnitItemModel = require("../models/UnitItem.model.js");
 const { ObjectId } = require('mongodb');
 const uploadService = require('../services/upload.service.js');
 const Voucher = require("../models/Vouchers.model.js");
+const itemHelper = require('../helpers/item.helper.js');
 
 const getAllItems = async ({
   page = 1,
@@ -317,7 +318,6 @@ const getAllItems = async ({
   }
 };
 
-
 const getItemByCode = async (code) => {
     try{
         const item = await Item.findOne({ ITEM_CODE: code });
@@ -501,7 +501,7 @@ const updateItem = async (id, itemData) => {
     }
 };
 
-const updateItemStock = async (id, quantity) => { // Chưa check
+const updateItemStock = async (id, quantity) => { 
     try {
         const updatedItem = await Item.findByIdAndUpdate(id, 
             { 
@@ -519,35 +519,31 @@ const updateItemStock = async (id, quantity) => { // Chưa check
     }
 };
 
-const updateItemPrice = async (id, priceData) => { //Chưa check
+const updateItemPrice = async (id, priceData) => { 
     try {
+        const now = new Date();
         const item = await Item.findById(id);
         if(!item){
           return {error: `Item có id: ${id} không tồn tại!`}
-        }
+        } 
 
-        const lastPriceEntry = item.PRICE?.[item.PRICE.length - 1];
-        const unitValue = lastPriceEntry?.UNIT || null;
-        console.log({unitValue});
-        const updatedItem = await Item.findByIdAndUpdate(id,
-            { 
-                $push: {
-                    PRICE: {
+        const validPrice = itemHelper.isValidPrice(item.PRICE);
+        console.log(validPrice);
+        validPrice.THRU_DATE = now;
+
+        item.PRICE.push({
                         PRICE_AMOUNT: priceData,
-                        FROM_DATE: new Date(),
+                        FROM_DATE: now,
                         THRU_DATE: null,
-                        UNIT: unitValue
-                    }
-                },
-                UPDATED_AT: new Date()
-            }, 
-            { new: true }
-        );
-        if (!updatedItem) {
-            return {error: "Item not found!"};
-        }   
-        return updatedItem;
+                        UNIT: validPrice.UNIT
+                    })
+                    
+        item.UPDATED_AT = now;
+        
+        await item.save();
+        return item;
     } catch (error) {
+      console.log(error);
         return {error: "Error updating item price!"};
     }
 };
