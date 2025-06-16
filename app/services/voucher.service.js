@@ -260,7 +260,8 @@ const getAllVouchers = async ({
     }
     if (filterByExpiration === "true") {
       const now = new Date();
-      query.END_DATE = { $gt: now };
+      query.START_DATE = { $lte: now };
+      query.END_DATE = { $gte: now };
     }
 
     if (filterByUsage === "true") {

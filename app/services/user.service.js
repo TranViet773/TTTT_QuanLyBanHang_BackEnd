@@ -872,7 +872,7 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
     // ép kiểu String thành số
     const pageNumber = Math.max(parseInt(page), 1);
     const limitNumber = Math.max(parseInt(limit), 1);
-    const skip = (pageNumber - 1) * limitNumber;
+    //const skip = (pageNumber - 1) * limitNumber;
 
     // lọc theo role nếu có
     const query = {};
@@ -884,18 +884,18 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
     }
 
 
-
-
-
     console.log("Truy vấn:", query);
     console.log("QUERY:", query);
 
-    const total = await User.countDocuments(query);
-    let users = await User.find(query)
+    // const total = await User.countDocuments(query);
+    // let users = await User.find(query)
 
-      .skip(skip)
-      .limit(limitNumber)
-      .sort({ CREATED_DATE: -1 });
+    //   .skip(skip)
+    //   .limit(limitNumber)
+    //   .sort({ CREATED_DATE: -1 });
+
+    let users = await User.find(query).sort({ CREATED_DATE: -1 });
+
 
 
       if (search.trim() !== "") {
@@ -910,11 +910,14 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
           return normalizedName.includes(keyword);
         });
       }
+      const total = users.length;
+      const startIndex = (pageNumber - 1) * limitNumber;
+      const paginatedUsers = users.slice(startIndex, startIndex + limitNumber);
     return {
       total,
       page: pageNumber,
       limit: limitNumber,
-      users,
+      users: paginatedUsers,
     };
   } catch (error) {
     console.error("Lỗi khi lấy thông tin người dùng:", error);
