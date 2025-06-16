@@ -398,7 +398,6 @@ const getAllInvoices = async (query) => {
         }
 
         if (fromDate?.trim()) {
-
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
 
