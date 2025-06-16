@@ -575,34 +575,57 @@ const deleteItems = async (data) => {
     
     try {
         
-        const invoice = await purcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const invoice = await PurcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
 
         if (!invoice) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}`}
         }
 
-        const validStatus = invoiceHelper.isValidStatus(invoice.STATUS);
+        const validStatus = authHelper.isValidInfo(invoice.STATUS);
 
         if (validStatus.STATUS_NAME !== 'DRAFT') {
             return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
         }
 
-        for(let index=0; index < invoice.ITEMS.length; index++) {
-            if (items !== invoice.ITEMS[index].ITEM_CODE) {
-                invoice.ITEMS.splice(index, 1)
-                break
+        if (items && Array.isArray(items)) {
+            for (const item of items) {
+                for(let index=0; index < invoice.ITEMS.length; index++) {
+                    if (item.trim().toString() === invoice.ITEMS[index].ITEM_CODE.trim().toString()) {
+                        invoice.ITEMS.splice(index, 1)
+                        break
+                    }
+                } 
+            }
+        }
+
+        else {
+            for(let index=0; index < invoice.ITEMS.length; index++) {
+                if (items === invoice.ITEMS[index].ITEM_CODE) {
+                    invoice.ITEMS.splice(index, 1)
+                    break
+                }
             }
         }
         
-        console.log(invoice.ITEMS)
         if (invoice.ITEMS.length < 1) {
-            const response = deleteInvoice(null, invoice)
-            console.log(response);
+            await deleteInvoice(null, invoice)
             return {message: "Xóa hóa đơn thành công."}
         }
         else {
+            
+            invoice.TOTAL_AMOUNT = 0
+
+            for (const item of invoice.ITEMS) {
+                invoice.TOTAL_AMOUNT += item.TOTAL_PRICE
+            }
+
+            const taxValue = invoice.TAX ? invoice.TAX/100 * invoice.TOTAL_AMOUNT : 0
+
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + taxValue + invoice.EXTRA_FEE
+            
+            // invoice.markModified('ITEMS');
             await invoice.save()
-            return invoice
+            return await handleInvoiceDataForResponse(invoice)
         }
 
     } catch (error) {
@@ -615,17 +638,17 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     try {
 
         if (invoice) {
-            const validStatus = invoiceHelper.isValidStatus(invoice.STATUS);
+            const validStatus = authHelper.isValidInfo(invoice.STATUS);
             if (validStatus.STATUS_NAME !== 'DRAFT') {
                 return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
             }
 
-            await purcharseInvoice.findByIdAndDelete(invoice._id)
+            await PurcharseInvoice.findByIdAndDelete(invoice._id)
             return
         }
 
-        const invoiceData = await purcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
-        const validStatus = invoiceHelper.isValidStatus(invoiceData.STATUS);        
+        const invoiceData = await PurcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const validStatus = authHelper.isValidInfo(invoiceData.STATUS);        
         if (!invoiceData) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
         }
@@ -633,7 +656,7 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
             return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
         }
 
-        await purcharseInvoice.findByIdAndDelete(invoiceData._id)
+        await PurcharseInvoice.findByIdAndDelete(invoiceData._id)
         return
 
     } catch(error) {
@@ -641,11 +664,10 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
         throw new Error("Lỗi xảy ra khi xóa hóa đơn nháp.")
     }
 }
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
-    deleteItems,
-    deleteInvoice
 }

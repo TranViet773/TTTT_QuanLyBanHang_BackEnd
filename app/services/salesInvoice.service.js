@@ -6,6 +6,7 @@ const Voucher = require('../models/Vouchers.model')
 const voucherService = require('../services/voucher.service')
 const authHelper = require('../helpers/auth.helper')
 const invoiceHelper = require('../helpers/invoice.helper')
+const _ = require('lodash')
 
 
 const handleInvoiceDataForResponse = async (invoice) => {
@@ -325,11 +326,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, soldBy, customer, fromDate, toDate} = query
+        const {page, limits, search, minPrice, maxPrice, fromDate, toDate} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
-        const limitNumber = Math.max(parseInt(limit) || 10, 1);
+        const limitNumber = Math.max(parseInt(limits) || 10, 1);
         // tính toán số lượng bản ghi cần bỏ qua
         const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
 
@@ -376,38 +377,73 @@ const getAllInvoices = async (query) => {
                 $or: [
                     { INVOICE_CODE: { $regex: search, $options: 'i' } },
                     { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
-                    { 'CUSTOMER.USERNAME' : { $regex: search, $option: 'i' } }
+                    { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
                 ]
             })
         }
 
-        if (soldBy?.trim()) {
-            matchConditions.push({ SOLD_BY: new ObjectId(soldBy) })
-        }
-
-        if (customer?.trim()) {
-            matchConditions.push({ CUSTOMER_ID: new ObjectId(customer) })
-        }
-
         if (fromDate?.trim()) {
-
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
 
-            let endDate
             if (toDate?.trim()) {
-                endDate = new Date(toDate)
-            } else {
-                endDate = new Date(fromDate)
-            }
-            endDate.setHours(23,59,59,999)
+                const endDate = new Date(toDate)
+                endDate.setHours(23,59,59,999)
 
-            matchConditions.push({
-                SELL_DATE: {
-                    $gte: startDate,
-                    $lte: endDate
-                }
-            })
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate,
+                        $lte: endDate
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate
+                    }
+                })
+            }
+        }
+
+        else {
+            if (toDate?.trim()) {
+                const endDate = new Date(toDate)
+                endDate.setHours(23,59,59,999)
+
+                matchConditions.push({
+                    SELL_DATE: {
+                        $lte: endDate
+                    }
+                })
+            }
+        }
+
+        if (minPrice?.trim()) {
+
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice),
+                        $lte: Number(maxPrice),
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice)
+                    }
+                })
+            }
+        }
+
+        else {
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $lte: Number(maxPrice)
+                    }
+                })
+            }
         }
 
         if (matchConditions.length > 0) {
@@ -437,7 +473,7 @@ const getAllInvoices = async (query) => {
         pipeline.push({ $skip: skip })
         pipeline.push({ $limit: limitNumber })
 
-        // console.log(JSON.stringify(pipeline, null, 2));
+        console.log(JSON.stringify(pipeline, null, 2));
 
         const [totalResult, results] = await Promise.all([
             SalesInvoice.aggregate(totalPipeline),
@@ -449,7 +485,7 @@ const getAllInvoices = async (query) => {
         return {
             total,
             page: pageNumber,
-            limit: limitNumber,
+            limits: limitNumber,
             results: results
         }
 
@@ -463,18 +499,14 @@ const getAllInvoices = async (query) => {
 
 const getInvoiceByCode = async (invoiceCode) => {
     try {
-        console.log(invoiceCode)
 
         const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
-
-        console.log(invoice)
 
         return await handleInvoiceDataForResponse(invoice)
     } catch (error) {
         throw new Error("Lỗi khi truy vấn dữ liệu hóa đơn.")
     }
 }
-
 
 const updateItemForExporting = async (items, originalItems, backupItems, now) => {
 
@@ -494,8 +526,6 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
         for(const item of originalItems) {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
-
-                // console.log('Item', item.ITEM_NAME, ": ", addItem)
 
                 const price = authHelper.isValidInfo(item.PRICE)
                 addItem.UNIT = price.UNIT
@@ -575,8 +605,6 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                             // cập nhật lại giá
                             addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
                         }
-                        
-                        console.log("total price of", item.ITEM_NAME, ":", addItem.TOTAL_PRICE)
 
                         const discount = voucher.TYPE === 'PERCENTAGE' ? addItem.UNIT_PRICE * voucher.VALUE / 100
                                                                         : voucher.VALUE
@@ -631,7 +659,7 @@ const updateInvoiceItems = async (items, originalItems) => {
 
                 // thêm trường giá bán vào item trong hóa đơn
                 const price = authHelper.isValidInfo(item.PRICE)
-                addItem.UNIT = price.get("UNIT")
+                addItem.UNIT = price.UNIT
                 addItem.UNIT_PRICE = price.PRICE_AMOUNT
 
                 let discount = 0
@@ -639,7 +667,6 @@ const updateInvoiceItems = async (items, originalItems) => {
                 // kiểm tra sản phẩm có giảm giá
                 if (addItem.PRODUCT_VOUCHER_ID) {
                     const voucher = await Voucher.findById(addItem.PRODUCT_VOUCHER_ID)
-                    console.log("voucher:", voucher)
 
                     if (!voucher) {
                         return ({ error: `Voucher cho item ${item.ITEM_NAME} không hợp lệ.` })
@@ -710,6 +737,10 @@ const updateInvoiceItems = async (items, originalItems) => {
 const createInvoice = async (data) => {
     const {status, soldBy, customerId, note, items, voucherGlobalId, 
             tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+    
+    if (!status || !soldBy || !items || !paymentMethod || !purchaseMethod) {
+        return {error: "Vui lòng nhập đầy đủ thông tin cần thiết cho hóa đơn."}
+    }
 
     if (status === 'CANCELLED') {
         return { error: `Status ${status} không hợp lệ.`}
@@ -774,8 +805,6 @@ const createInvoice = async (data) => {
             if (totalAmount?.error) {
                 return totalAmount
             }
-
-            console.log("Total amount of draft:", totalAmount)
         }
 
         // tính thuế
@@ -973,28 +1002,22 @@ const updateInvoiceStatus = async (invoice, status) => {
 
 const updateInvoice = async (data) => {
 
-    const {items, invoiceCode, status} = data
+    const {items, invoiceCode, status, globalVoucher, note, 
+            extraFee, extraFeeNote, extraFeeUnit, paymentMethod, purchaseMethod, tax} = data
     const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
-    const backupLastUpdated = invoice.LAST_UPDATED
+    const backupInvoice = _.cloneDeep(invoice.toObject())
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
     }
 
-    if (invoice.STATUS !== 'DRAFT' && status) {
-        return {error: `Không thể cập nhật lại STATUS cho hóa đơn đang ở trạng thái ${invoice.STATUS}.`}
-    }
-
-    if (items && invoice.STATUS !== 'DRAFT') {
+    if (invoice.STATUS !== 'DRAFT') {
         return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
     }
 
-    const backupInvoiceItems = invoice.ITEMS.map(item => ({...item.toObject?.() || item}))
-
     try {
-
-        let totalAmount = 0
-
+ 
+        // cập nhật danh sách item nếu có
         if (items && items.length > 0) {
             const itemCodes = items.map(item => item.ITEM_CODE)
             const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
@@ -1004,72 +1027,87 @@ const updateInvoice = async (data) => {
                 return { error: updatingItems.error }
             }
 
-            for (const origin of invoice.ITEMS) {
-                for (const newItems of items)  {
-                    if (newItems.ITEM_CODE === origin.ITEM_CODE) {
-                        origin = newItems
+            for (const newItems of items) {
+                let oldItemFlag = false
+                for (let i=0; i < invoice.ITEMS.length; i++) {
+                    if (newItems.ITEM_CODE === invoice.ITEMS[i].ITEM_CODE) {
+                        invoice.ITEMS[i] = newItems
+                        oldItemFlag = true
                         break
                     }
                 }
-                totalAmount += origin.TOTAL_AMOUNT
-            }
-        }
 
-        const globalVoucher = invoice.VOUCHER_GLOBAL_ID ? await Voucher.findById(invoice.VOUCHER_GLOBAL_ID) : null
-        const isAvailable = globalVoucher ? voucherService.isVoucherAvailable(globalVoucher).available : null
-        const isValidVoucher = checkValidVouchers(invoice.ITEMS)
-        if (isValidVoucher || 
-            (invoice.VOUCHER_GLOBAL_ID && isAvailable === false)
-        ){
-            if (isAvailable === false) {
-                invoice.VOUCHER_GLOBAL_ID = null
-            }
-            
-            invoice.UPDATED_AT = new Date()
-
-            await invoice.save()
-            return {
-                invoice: await handleInvoiceDataForResponse(invoice),
-                warning: "Không thể cập nhật vì có tồn tại voucher không hợp lệ trong hóa đơn (được chuyển về null)."
-            }
-        }
-
-        const taxValue = invoice.TAX ? totalAmount * invoice.TAX : 0
-
-        if (isAvailable === true) {
-            const discount = globalVoucher.TYPE === 'PERCENTAGE' ? (totalAmount * globalVoucher.VALUE / 100) : globalVoucher.VALUE
-            totalAmount = discount > globalVoucher.MAX_DISCOUNT ? totalAmount - globalVoucher.MAX_DISCOUNT :
-                                                                    totalAmount - discount
-        }
-
-        const finalTotal = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
-
-        invoice.TOTAL_AMOUNT = totalAmount
-        invoice.TOTAL_WITH_TAX_EXTRA_FEE = finalTotal
-
-        const updatingInvoice = await invoice.save()
-
-        if (status) {
-            return await updateInvoiceStatus(updatingInvoice, status)
-        }
-
-    } catch (error) {
-
-        for(const backup of backupInvoiceItems) {
-            for (let origin of invoice.ITEMS) {
-                if (backup.ITEM_CODE === origin.ITEM_CODE) {
-                    origin = backup
-                    break
+                if (!oldItemFlag) {
+                    invoice.ITEMS.push(newItems)
                 }
             }
         }
+
+        // cập nhật voucher (nếu có) và kiểm tra khả dụng
+        const voucher = globalVoucher ? await Voucher.findById(globalVoucher) :
+                                        invoice.VOUCHER_GLOBAL_ID ? await Voucher.findById(invoice.VOUCHER_GLOBAL_ID) : null
+        const isAvailable = voucher ? voucherService.isVoucherAvailable(voucher).available : null
+        const isValidVoucher = checkValidVouchers(invoice.ITEMS)
         
-        invoice.LAST_UPDATED = backupLastUpdated
+        if (isValidVoucher || (voucher && isAvailable === false)){
+            if (isAvailable === false) {
+                invoice.VOUCHER_GLOBAL_ID = null
+            }
+        }
+
+
+        // tính lại tổng tiền
+        let totalAmount = 0
+        for (const item of invoice.ITEMS) {
+            totalAmount += item.TOTAL_PRICE
+        }
         
+        // cập nhật thuế (nếu có) và tính lại giá trị thuế
+        invoice.TAX = tax ? tax : invoice.TAX ? invoice.TAX : null
+        const taxValue = invoice.TAX ? totalAmount * invoice.TAX/100 : 0
+            
+        // cập nhật tổng tiền với giá trị giảm giá (nếu có)
+        if (isAvailable === true) {
+            const discount = voucher.TYPE === 'PERCENTAGE' ? (totalAmount * voucher.VALUE / 100) : voucher.VALUE
+            totalAmount = discount > voucher.MAX_DISCOUNT ? totalAmount - voucher.MAX_DISCOUNT :
+                                                                    totalAmount - discount
+        }
+
+        // cập nhật extra fee (nếu có)
+        invoice.EXTRA_FEE = extraFee ? extraFee : invoice.EXTRA_FEE ? invoice.EXTRA_FEE : null
+        invoice.EXTRA_FEE_UNIT = extraFeeUnit ? extraFeeUnit : invoice.EXTRA_FEE_UNIT ? invoice.EXTRA_FEE_UNIT : null
+        invoice.EXTRA_FEE_NOTE = extraFeeNote ? extraFeeNote : invoice.EXTRA_FEE_NOTE ? invoice.EXTRA_FEE_NOTE : null
+
+        // cập nhật tổng tiền cho hóa đơn
+        invoice.TOTAL_AMOUNT = totalAmount
+        invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
+
+        // cập nhật lại ghi chú cho hóa đơn (nếu có)
+        invoice.NOTE = note? note : invoice.NOTE ? invoice.NOTE : null
+
+        // cập nhật lại phương thức thanh toán (nếu có)
+        invoice.PAYMENT_METHOD = paymentMethod ? paymentMethod : invoice.PAYMENT_METHOD
+
+        // cập nhật lại phương thức mua hàng (nếu có)
+        invoice.PURCHASE_METHOD = purchaseMethod ? purchaseMethod : invoice.PURCHASE_METHOD
+
+        invoice.UPDATED_AT = new Date()
+
+        await invoice.save()
+
+        if (status) {
+            return await updateInvoiceStatus(invoice, status)
+        }
+
+        return await handleInvoiceDataForResponse(invoice)
+
+    } catch (error) {
+
+        Object.assign(invoice, backupInvoice)
         await invoice.save()
 
         console.log(error)
-        throw new Error ("Lỗi xảy ra trong quá trình cập nhật hóa đơn.")
+        throw new Error (error.message)
     }
 }
 
@@ -1088,39 +1126,60 @@ const deleteItems = async (data) => {
             return  {error: `Không thể cập nhật chi tiết hóa đơn ở trạng thái ${invoice.STATUS}`}
         }
 
-        // if (Array.isArray(items)) {
-        //     console.log(items)
-        //     for (const item of items) {
-        //         for(let index=0; index < invoice.ITEMS.length; index++) {
-        //             if (item !== invoice.ITEMS[index].ITEM_CODE) {
-        //                 invoice.ITEMS.splice(index, 1)
-        //                 break
-        //             }
-        //         } 
-        //     }
-        // }
 
-        // else {
+        if (items && Array.isArray(items)) {
+            for (const item of items) {
+                for(let index=0; index < invoice.ITEMS.length; index++) {
+                    if (item.trim().toString() === invoice.ITEMS[index].ITEM_CODE.trim().toString()) {
+                        invoice.ITEMS.splice(index, 1)
+                        break
+                    }
+                } 
+            }
+        }
+
+        else {
             for(let index=0; index < invoice.ITEMS.length; index++) {
-                if (items !== invoice.ITEMS[index].ITEM_CODE) {
+                if (items === invoice.ITEMS[index].ITEM_CODE) {
                     invoice.ITEMS.splice(index, 1)
                     break
                 }
             }
-        // }
+        }
 
         if (invoice.ITEMS.length < 1) {
-            deleteInvoice(null, invoice)
+            await deleteInvoice(null, invoice)
             return {message: "Xóa hóa đơn thành công."}
         }
         else {
+            
+            invoice.TOTAL_AMOUNT = 0
+
+            for (const item of invoice.ITEMS) {
+                invoice.TOTAL_AMOUNT += item.TOTAL_PRICE
+            }
+
+            const taxValue = invoice.TAX ? invoice.TAX/100 * invoice.TOTAL_AMOUNT : 0
+
+            if (invoice.VOUCHER_GLOBAL_ID) {
+                const voucher = await Voucher.findById(invoice.VOUCHER_GLOBAL_ID)
+
+                const discount = voucher.TYPE === 'PERCENTAGE' ? invoice.TOTAL_AMOUNT * voucher.VALUE/100 : voucher.VALUE
+                invoice.TOTAL_AMOUNT = voucher.MAX_DISCOUNT && discount > voucher.MAX_DISCOUNT ? 
+                                                        invoice.TOTAL_AMOUNT - voucher.MAX_DISCOUNT : 
+                                                        invoice.TOTAL_AMOUNT - discount
+            }
+
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + taxValue + invoice.EXTRA_FEE
+            
+            // invoice.markModified('ITEMS');
             await invoice.save()
-            return invoice
+            return await handleInvoiceDataForResponse(invoice)
         }
 
     } catch (error) {
         console.log(error)
-        throw new Error ("Lỗi xảy ra khi xóa item(s) trong hóa đơn.")
+        throw new Error ("Lỗi xảy ra khi xóa item trong hóa đơn.")
     }
 }
 
@@ -1156,7 +1215,6 @@ module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
-    updateInvoiceStatus,
     updateInvoice,
     deleteItems,
     deleteInvoice
