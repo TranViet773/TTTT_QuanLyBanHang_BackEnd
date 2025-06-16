@@ -8,6 +8,7 @@ router.post('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'st
 router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.updateInvoice)
 router.put('/removing-items/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.deleteItems)
 router.get('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.getAllInvoices)
+router.get('/statistic-based-on-status', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticInvoiceBasedOnStatus)
 router.get('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.getInvoiceByCode)
 router.delete('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.deleteInvoice)
 

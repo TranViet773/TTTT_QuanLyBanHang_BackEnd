@@ -190,7 +190,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, userId, fromDate, toDate} = query
+        const {page, limit, search, userId, status, fromDate, toDate, minPrice, maxPrice} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -229,35 +229,93 @@ const getAllInvoices = async (query) => {
             })
         }
 
-        if (userId?.trim()) {
-            matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
-        }
-
         if (fromDate?.trim()) {
-
             const startDate = new Date(fromDate)
             startDate.setHours(0,0,0,0)
-            console.log(startDate)
 
-            let endDate
             if (toDate?.trim()) {
-                endDate = new Date(toDate)
-            } else {
-                endDate = new Date(fromDate)
-            }
-            endDate.setHours(23,59,59,999)
+                const endDate = new Date(toDate)
+                endDate.setHours(23,59,59,999)
 
-            matchConditions.push({
-                IMPORT_DATE: {
-                    $gte: startDate,
-                    $lte: endDate
-                }
-            })
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate,
+                        $lte: endDate
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    SELL_DATE: {
+                        $gte: startDate
+                    }
+                })
+            }
+        }
+
+        else {
+            if (toDate?.trim()) {
+                const endDate = new Date(toDate)
+                endDate.setHours(23,59,59,999)
+
+                matchConditions.push({
+                    SELL_DATE: {
+                        $lte: endDate
+                    }
+                })
+            }
+        }
+
+        if (minPrice?.trim()) {
+
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice),
+                        $lte: Number(maxPrice),
+                    } 
+                })
+            } else {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $gte: Number(minPrice)
+                    }
+                })
+            }
+        }
+
+        else {
+            if (maxPrice?.trim()) {
+                matchConditions.push({
+                    TOTAL_WITH_TAX_EXTRA_FEE: {
+                        $lte: Number(maxPrice)
+                    }
+                })
+            }
+        }
+
+        if (userId?.trim()) {
+            matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
         }
 
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
             console.log(matchConditions)
+        }
+
+        if (status?.trim()) {
+            pipeline.push({ $match: {
+                $exp: {
+                    $eq: [
+                        {
+                            $getField: "STATUS",
+                            input: {
+                                $arrayElemAt: ["$STATUS", -1]
+                            }
+                        },
+                        status
+                    ]
+                }
+            }})
         }
 
         // tạo pipeline để đếm tổng số bản ghi
@@ -643,11 +701,11 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
                 return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
             }
 
-            await PurcharseInvoice.findByIdAndDelete(invoice._id)
+            await PurchaseInvoice.findByIdAndDelete(invoice._id)
             return
         }
 
-        const invoiceData = await PurcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const invoiceData = await PurchaseInvoice.findOne({INVOICE_CODE: invoiceCode})
         const validStatus = authHelper.isValidInfo(invoiceData.STATUS);        
         if (!invoiceData) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
@@ -656,7 +714,7 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
             return {error: `Không thể xóa hóa đơn ở trạng thái ${validStatus.STATUS_NAME}.`}
         }
 
-        await PurcharseInvoice.findByIdAndDelete(invoiceData._id)
+        await PurchaseInvoice.findByIdAndDelete(invoiceData._id)
         return
 
     } catch(error) {

@@ -9,6 +9,7 @@ const invoiceHelper = require('../helpers/invoice.helper')
 const _ = require('lodash')
 
 
+
 const handleInvoiceDataForResponse = async (invoice) => {
     try {
         const pipeline = [
@@ -68,8 +69,10 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                 ITEM_DETAIL: {
                                                     ITEM_NAME: "$$matchedItem.ITEM_NAME",
                                                     ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
-                                                    AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
-                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE'
+                                                    AVATAR_IMAGE_URL: '$$matchedItem.AVATAR_IMAGE_URL',
+                                                    ITEM_TYPE: '$$matchedItem.ITEM_TYPE',
+                                                    IS_ACTIVE: '$$matchedItem.IS_ACTIVE',
+                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE',
                                                 }
                                             }
                                         }                                        
@@ -118,6 +121,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                             },
                                             in: {
                                                 VOUCHER: {
+                                                    _id: '$$matchedVoucher._id',
                                                     VOUCHER_CODE: '$$matchedVoucher.VOUCHER_CODE',
                                                     TYPE: '$$matchedVoucher.TYPE',
                                                     VALUE: '$$matchedVoucher.VALUE',
@@ -140,6 +144,14 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     localField: 'ITEMS.ITEM_DETAIL.LIST_VOUCHER_ACTIVE',
                     foreignField: '_id',
                     as: 'LIST_VOUCHER_ACTIVE',
+                }
+            },
+            {
+                $lookup: {
+                    from: 'item_types',
+                    localField: 'ITEMS.ITEM_DETAIL.ITEM_TYPE',
+                    foreignField: '_id',
+                    as: 'LIST_ITEM_TYPE'
                 }
             },
             {
@@ -198,14 +210,18 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 $project: {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
-                    CUSTOMER: '$CUSTOMER.USERNAME',
+                    CUSTOMER: {
+                        USERNAME: '$CUSTOMER.USERNAME',
+                    },
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
+                    DELIVERY_INFORMATION: '$DELIVER_INFORMATION',
                     NOTE: '$NOTE',
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
                     GLOBAL_VOUCHER: {
+                        _id: '$VOUCHER._id',
                         VOUCHER_CODE: '$VOUCHER.VOUCHER_CODE',
                         TYPE: '$VOUCHER.TYPE',
                         VALUE: '$VOUCHER.VALUE',
@@ -221,6 +237,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     CREATED_AT: '$CREATED_AT',
                     UPDATED_AT: '$UPDATED_AT',
                     LIST_VOUCHER_ACTIVE: '$LIST_VOUCHER_ACTIVE',
+                    LIST_ITEM_TYPE: '$LIST_ITEM_TYPE',
                 }
             }
         ]
@@ -235,11 +252,16 @@ const handleInvoiceDataForResponse = async (invoice) => {
         ])
 
         const listVoucher = response[0].LIST_VOUCHER_ACTIVE
+        const listItemType = response[0].LIST_ITEM_TYPE
+
+        console.log("list item type: ", listItemType)
+
         if(listVoucher){
             for (let i = 0; i < response[0].ITEMS.length; i++) {
                 const item = response[0].ITEMS[i]
 
                 const detail = item.ITEM_DETAIL
+                console.log(detail)
 
                 const vouchers = detail.LIST_VOUCHER_ACTIVE
 
@@ -264,12 +286,28 @@ const handleInvoiceDataForResponse = async (invoice) => {
                         }
                     }
                 }
+
+                const itemType = detail.ITEM_TYPE
+                for (const type of listItemType) {
+                    console.log("type: ", type)
+                    console.log("item type:", itemType)
+                    if (detail.ITEM_TYPE.equals(type._id)) {
+                        detail.ITEM_TYPE_NAME = type.ITEM_TYPE_NAME
+                    }
+                }
+
+                for(const key of Object.keys(detail)) {
+                    item[key] = detail[key]
+                }
+
+                delete item.ITEM_DETAIL
             }
         }
         else console.log("null")    
         
 
         delete response[0].LIST_VOUCHER_ACTIVE
+        delete response[0].LIST_ITEM_TYPE
 
         if (invoice.CUSTOMER_ID) {
             const user = await User.findById(invoice.CUSTOMER_ID)
@@ -326,7 +364,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limits, search, minPrice, maxPrice, fromDate, toDate} = query
+        const {page, limits, search, status, buyer, seller, invoiceCode, minPrice, maxPrice, fromDate, toDate} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -335,6 +373,7 @@ const getAllInvoices = async (query) => {
         const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
 
         const matchConditions = []
+        const now = new Date()
 
         // tạo pipeline join bảng
         const pipeline = [        
@@ -368,18 +407,63 @@ const getAllInvoices = async (query) => {
                     path: '$CUSTOMER',
                     preserveNullAndEmptyArrays: true
                 }
-            }
+            },
+
+            {             
+                $lookup: {
+                    from: "users",
+                    let: { 
+                        userId: "$CUSTOMER_ID",
+                        now: now,
+                     },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$_id", "$$userId"] },
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "CUSTOMER_INFO"
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CUSTOMER_INFO',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
         ]
 
         if (search?.trim()) {
             console.log(search)
-            matchConditions.push({
+            if (seller?.trim() && seller === true) {
+                matchConditions.push({ 'STAFF.USERNAME': { $regex: seller, $options: 'i' } },)
+            }
+
+            else if (buyer?.trim() && buyer === true) {
+                matchConditions.push({ 'CUSTOMER.USERNAME': { $regex: buyer, $options: 'i' } },)
+            }
+
+            else if (invoiceCode?.trim() && invoiceCode === true) {
+                matchConditions.push({ INVOICE_CODE: { $regex: search, $options: 'i' } })
+            }
+
+            else matchConditions.push({
                 $or: [
                     { INVOICE_CODE: { $regex: search, $options: 'i' } },
                     { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
                     { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
                 ]
             })
+        }
+
+        if (status?.trim()) {
+            matchConditions.push({ STATUS: { $regex: status, $options: 'i' }})
         }
 
         if (fromDate?.trim()) {
@@ -460,18 +544,23 @@ const getAllInvoices = async (query) => {
             $project: {
                 _id: 0,
                 INVOICE_CODE: "$INVOICE_CODE",
-                CUSTOMER: "$CUSTOMER.USERNAME",
+                CUSTOMER: {
+                    USERNAME: "$CUSTOMER.USERNAME",
+                    // EMAIL: "$CUSTOMER"
+                },
                 SELL_DATE: "$SELL_DATE",
                 SOLD_BY: "$STAFF.USERNAME",
                 STATUS: "$STATUS",
                 TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX_EXTRA_FEE",
                 PAYMENT_METHOD: "$PAYMENT_METHOD",
-                PURCHASE_METHOD: "$PURCHASE_METHOD"
+                PURCHASE_METHOD: "$PURCHASE_METHOD",
+                CUSTOMER_INFO: "$CUSTOMER_INFO",
+                // CONTACT_INFO: "$CONTACT_INFO"
             }
         })
         pipeline.push({ $sort: { SELL_DATE: -1 } })
         pipeline.push({ $skip: skip })
-        pipeline.push({ $limit: limitNumber })
+        pipeline.push({ $limit: limitNumber > 50 ? 50 : limitNumber })
 
         console.log(JSON.stringify(pipeline, null, 2));
 
@@ -481,6 +570,23 @@ const getAllInvoices = async (query) => {
         ])
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
+
+
+        // Lấy ra thông tin cơ bản của khách hàng
+        for (let i=0; i < results.length; i++) {
+            if (!results[i].CUSTOMER_INFO) {
+                continue
+            }
+            const info = results[i].CUSTOMER_INFO
+            const listContact = info.LIST_CONTACT            
+            const contact = authHelper.isValidInfo(listContact)
+            
+            results[i].CUSTOMER.FULL_NAME = contact.FULL_NAME
+            results[i].CUSTOMER.EMAIL = contact.EMAIL
+            results[i].CUSTOMER.PHONE_NUMBER = contact.PHONE_NUMBER
+            
+            delete results[i].CUSTOMER_INFO
+        }
 
         return {
             total,
@@ -532,6 +638,17 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 addItem.UNIT_PRICE = price.PRICE_AMOUNT
                 addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
                 addItem.SUPPLIER_ID = null
+
+                // Kiểm tra item is_active
+                if (!item.IS_ACTIVE) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+
+                    return ({
+                        // khi lỗi sẽ trả về tất cả dữ liệu (để thực hiện rollback) kèm error
+                        totalAmount, count, vouchers, backupVouchers, items,
+                        error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`
+                    })
+                }
 
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
@@ -657,6 +774,10 @@ const updateInvoiceItems = async (items, originalItems) => {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
 
+                if (!item.IS_ACTIVE) {
+                    return {error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`}
+                }
+
                 // thêm trường giá bán vào item trong hóa đơn
                 const price = authHelper.isValidInfo(item.PRICE)
                 addItem.UNIT = price.UNIT
@@ -736,7 +857,8 @@ const updateInvoiceItems = async (items, originalItems) => {
 
 const createInvoice = async (data) => {
     const {status, soldBy, customerId, note, items, voucherGlobalId, 
-            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod,
+            name, country, city, district, ward, detail, phoneNumber, email} = data
     
     if (!status || !soldBy || !items || !paymentMethod || !purchaseMethod) {
         return {error: "Vui lòng nhập đầy đủ thông tin cần thiết cho hóa đơn."}
@@ -746,9 +868,19 @@ const createInvoice = async (data) => {
         return { error: `Status ${status} không hợp lệ.`}
     }
 
+    if (purchaseMethod === 'ONLINE' || purchaseMethod === 'DELIVERY' || purchaseMethod === 'PRE_ORDER') {
+        if (!name || !country || !city || !district || !ward || !phoneNumber || !email) {
+            return { error: 'Vui lòng nhập đầy đủ thông tin đặt hàng.' }
+        }
+    }
+
     try {
-        if(!await Account.findOne({ USER_ID: soldBy })) {
-            return {error: "Người dùng không tồn tại."}
+        if(soldBy && !await Account.findOne({ USER_ID: soldBy })) {
+            return { error: "Nhân viên không tồn tại." }
+        }
+
+        if (customerId && !await Account.findOne({ USER_ID: customerId })) {
+            return { error: "Khách hàng không tồn tại." }
         }
         
         // lấy các document item tương ứng
@@ -866,8 +998,20 @@ const createInvoice = async (data) => {
             INVOICE_CODE: now.getTime(),
             CUSTOMER_ID: customerId || null,
             SELL_DATE: now,
-            SOLD_BY: soldBy,
+            SOLD_BY: soldBy || null,
             STATUS: status,
+            DELIVERY_INFORMATION: {
+                NAME: name,
+                ADDRESS: {
+                    COUNTRY: country,
+                    CITY: city,
+                    DISTRICT: district,
+                    WARD: ward,
+                    DETAIL: detail,
+                },
+                PHONE_NUMBER: phoneNumber,
+                EMAIL: email,
+            },
             NOTE: note,
             ITEMS: items,
             TOTAL_AMOUNT: totalAmount,
@@ -1211,11 +1355,37 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     }
 }
 
+const statisticInvoiceBasedOnStatus = async () => {
+    try {
+        const statistic = await SalesInvoice.aggregate([
+            {
+                $group: {
+                    _id: "$STATUS",
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    status: "$_id",
+                    _id: 0,
+                    count: 1
+                }
+            }
+        ])
+        return statistic
+    } catch (error) {
+        console.log(error)
+        throw new Error('Lỗi xảy ra khi truy vấn dữ liệu hóa đơn.')
+    }
+}
+
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
     deleteItems,
-    deleteInvoice
+    deleteInvoice,
+    statisticInvoiceBasedOnStatus
 }
