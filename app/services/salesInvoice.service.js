@@ -210,10 +210,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 $project: {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
-                    CUSTOMER: {
-                        CUSTOMER_ID: '$CUSTOMER_ID',
-                        USERNAME: '$CUSTOMER.USERNAME',
-                    },
+                    CUSTOMER: '$CUSTOMER.USERNAME',
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
@@ -319,6 +316,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             }
 
             response[0].CUSTOMER_CONTACT = {
+                _id: invoice.CUSTOMER_ID,
+                USERNAME: response[0].CUSTOMER,
                 NAME: contact.FULL_NAME,
                 PHONE_NUMBER: contact.PHONE_NUMBER,
                 ADDRESS_1: contact.ADDRESS_1,
@@ -330,6 +329,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 STATE: contact.STATE,
                 COUNTRY: contact.COUNTRY,
             }
+
+            delete response[0].CUSTOMER
         }
 
         if (invoice.SOLD_BY) {
@@ -341,6 +342,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
             }
 
             response[0].STAFF_CONTACT = {
+                _id: invoice.SOLD_BY,
                 NAME: contact.FULL_NAME,
                 PHONE_NUMBER: contact.PHONE_NUMBER,
                 ADDRESS_1: contact.ADDRESS_1,
