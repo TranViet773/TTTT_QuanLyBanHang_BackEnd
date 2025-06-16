@@ -9,6 +9,7 @@ const invoiceHelper = require('../helpers/invoice.helper')
 const _ = require('lodash')
 
 
+
 const handleInvoiceDataForResponse = async (invoice) => {
     try {
         const pipeline = [
@@ -69,7 +70,9 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                     ITEM_NAME: "$$matchedItem.ITEM_NAME",
                                                     ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
                                                     AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
-                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE'
+                                                    ITEM_TYPE: '$$matchedItem.ITEM_TYPE',
+                                                    IS_ACTIVE: '$$matchedItem.IS_ACTIVE',
+                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE',
                                                 }
                                             }
                                         }                                        
@@ -140,6 +143,14 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     localField: 'ITEMS.ITEM_DETAIL.LIST_VOUCHER_ACTIVE',
                     foreignField: '_id',
                     as: 'LIST_VOUCHER_ACTIVE',
+                }
+            },
+            {
+                $lookup: {
+                    from: 'item_types',
+                    localField: 'ITEMS.ITEM_DETAIL.ITEM_TYPE',
+                    foreignField: '_id',
+                    as: 'LIST_ITEM_TYPE'
                 }
             },
             {
@@ -326,7 +337,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limits, search, status, buyer, seller, minPrice, maxPrice, fromDate, toDate} = query
+        const {page, limits, search, status, buyer, seller, invoiceCode, minPrice, maxPrice, fromDate, toDate} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -371,26 +382,27 @@ const getAllInvoices = async (query) => {
             }
         ]
 
-        const orQuery = []
-
         if (search?.trim()) {
             console.log(search)
-            // matchConditions.push({
-            //     $or: [
-            //         { INVOICE_CODE: { $regex: search, $options: 'i' } },
-            //         { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
-            //         { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
-            //     ]
-            // })
-            matchConditions.push({ INVOICE_CODE: { $regex: search, $options: 'i' } })
-        }
+            if (seller?.trim() && seller === true) {
+                matchConditions.push({ 'STAFF.USERNAME': { $regex: seller, $options: 'i' } },)
+            }
 
-        if (seller?.trim()) {
-            matchConditions.push({ 'STAFF.USERNAME': { $regex: seller, $options: 'i' } },)
-        }
+            else if (buyer?.trim() && seller === true) {
+                matchConditions.push({ 'CUSTOMER.USERNAME': { $regex: buyer, $options: 'i' } },)
+            }
 
-        if (buyer?.trim()) {
-            matchConditions.push({ 'CUSTOMER.USERNAME': { $regex: buyer, $options: 'i' } },)
+            else if (invoiceCode?.trim() && invoiceCode === true) {
+                matchConditions.push({ INVOICE_CODE: { $regex: search, $options: 'i' } })
+            }
+
+            else matchConditions.push({
+                $or: [
+                    { INVOICE_CODE: { $regex: search, $options: 'i' } },
+                    { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
+                    { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
+                ]
+            })
         }
 
         if (status?.trim()) {
@@ -548,6 +560,17 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
                 addItem.SUPPLIER_ID = null
 
+                // Kiểm tra item is_active
+                if (!item.IS_ACTIVE) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+
+                    return ({
+                        // khi lỗi sẽ trả về tất cả dữ liệu (để thực hiện rollback) kèm error
+                        totalAmount, count, vouchers, backupVouchers, items,
+                        error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`
+                    })
+                }
+
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
                     await invoiceHelper.rollbackItems(count, originalItems, backupItems)
@@ -671,6 +694,10 @@ const updateInvoiceItems = async (items, originalItems) => {
         for(const item of originalItems) {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
+
+                if (!item.IS_ACTIVE) {
+                    return {error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`}
+                }
 
                 // thêm trường giá bán vào item trong hóa đơn
                 const price = authHelper.isValidInfo(item.PRICE)
@@ -1226,11 +1253,36 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     }
 }
 
+const statisticInvoiceBasedOnStatus = async () => {
+    try {
+        const statistic = await SalesInvoice.aggregate([
+            {
+                $group: {
+                    _id: "$STATUS",
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $project: {
+                    status: "$_id",
+                    count: 1
+                }
+            }
+        ])
+        return statistic
+    } catch (error) {
+        console.log(error)
+        throw new Error('Lỗi xảy ra khi truy vấn dữ liệu hóa đơn.')
+    }
+}
+
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
     deleteItems,
-    deleteInvoice
+    deleteInvoice,
+    statisticInvoiceBasedOnStatus
 }
