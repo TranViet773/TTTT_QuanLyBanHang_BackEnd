@@ -467,53 +467,6 @@ const getAllInvoices = async (query) => {
                     preserveNullAndEmptyArrays: true,
                 }
             },
-
-            {
-                $addFields: {
-                    CUSTOMER_INFO: {
-                        $map: {
-                            input: '$CUSTOMER_INFO',
-                            as: "info",
-                            in: {
-                                $mergeObjects: [
-                                    '$$info',
-                                    {
-                                        $let: {
-                                            vars: {
-                                                matchedItem: {
-                                                    $arrayElemAt: [{
-                                                        $filter: {
-                                                            input: "$CUSTOMER_INFO.LIST_CONTACT",
-                                                            as: 'contact',
-                                                            cond: {
-                                                                $and: [
-                                                                { $gte: ["$$contact.FROM_DATE", now] },
-                                                                {
-                                                                    $or: [
-                                                                        { $lt: ["$$contact.THRU_DATE", now] },
-                                                                        { $eq: ["$$contact.THRU_DATE", null] }
-                                                                    ]
-                                                                }
-                                                                ]
-                                                            }
-                                                        }
-                                                    }, 0]
-                                                }
-                                            },
-                                            in: {
-                                                CONTACT: {
-                                                    FULL_NAME: '$$matchedItem.FULL_NAME'
-                                                }
-                                            }
-                                        }    
-                                        
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
         ]
 
         if (search?.trim()) {
@@ -632,12 +585,12 @@ const getAllInvoices = async (query) => {
                 PAYMENT_METHOD: "$PAYMENT_METHOD",
                 PURCHASE_METHOD: "$PURCHASE_METHOD",
                 CUSTOMER_INFO: "$CUSTOMER_INFO",
-                CONTACT_INFO: "$CONTACT_INFO"
+                // CONTACT_INFO: "$CONTACT_INFO"
             }
         })
         pipeline.push({ $sort: { SELL_DATE: -1 } })
         pipeline.push({ $skip: skip })
-        pipeline.push({ $limit: limitNumber })
+        pipeline.push({ $limit: limitNumber > 50 ? 50 : limitNumber })
 
         console.log(JSON.stringify(pipeline, null, 2));
 
@@ -647,6 +600,23 @@ const getAllInvoices = async (query) => {
         ])
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
+
+
+        // Lấy ra thông tin cơ bản của khách hàng
+        for (let i=0; i < results.length; i++) {
+            if (!results[i].CUSTOMER_INFO) {
+                continue
+            }
+            const info = results[i].CUSTOMER_INFO
+            const listContact = info.LIST_CONTACT            
+            const contact = authHelper.isValidInfo(listContact)
+            
+            results[i].CUSTOMER.FULL_NAME = contact.FULL_NAME
+            results[i].CUSTOMER.EMAIL = contact.EMAIL
+            results[i].CUSTOMER.PHONE_NUMBER = contact.PHONE_NUMBER
+            
+            delete results[i].CUSTOMER_INFO
+        }
 
         return {
             total,
