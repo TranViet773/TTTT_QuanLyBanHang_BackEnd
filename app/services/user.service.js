@@ -3,7 +3,7 @@ const Account = require("../models/Account.model");
 const AccountDevice = require("../models/AccountDevice.model");
 const authService = require("../services/auth.service");
 const authHelper = require("../helpers/auth.helper");
-const { isValidInfo } = require("../helpers/auth.helper");
+const { isValidInfo, isValidEmail } = require("../helpers/auth.helper");
 const { ObjectId } = require("mongodb");
 const { generateKeyPairSync } = require("crypto");
 const ms = require("ms");
@@ -114,10 +114,10 @@ const handleUserDataForResponse = (user, account, device) => {
 };
 
 const handleRegistration = async (data) => {
-  const existingUser =
-    (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
-    (await Account.findOne({ USERNAME: data.username }));
-  if (existingUser) return { error: "Email đã được đăng ký!" };
+  if (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) 
+    return { error: "Email đã được đăng ký!" };
+  if (await Account.findOne({ USERNAME: data.username }))
+    return {error: "Username đã được đăng ký. Vui lòng chọn username khác!"}
   await authService.sendVerificationEmail(data);
 };
 
@@ -872,7 +872,7 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
     // ép kiểu String thành số
     const pageNumber = Math.max(parseInt(page), 1);
     const limitNumber = Math.max(parseInt(limit), 1);
-    const skip = (pageNumber - 1) * limitNumber;
+    //const skip = (pageNumber - 1) * limitNumber;
 
     // lọc theo role nếu có
     const query = {};
@@ -884,18 +884,18 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
     }
 
 
-
-
-
     console.log("Truy vấn:", query);
     console.log("QUERY:", query);
 
-    const total = await User.countDocuments(query);
-    let users = await User.find(query)
+    // const total = await User.countDocuments(query);
+    // let users = await User.find(query)
 
-      .skip(skip)
-      .limit(limitNumber)
-      .sort({ CREATED_DATE: -1 });
+    //   .skip(skip)
+    //   .limit(limitNumber)
+    //   .sort({ CREATED_DATE: -1 });
+
+    let users = await User.find(query).sort({ CREATED_DATE: -1 });
+
 
 
       if (search.trim() !== "") {
@@ -910,11 +910,14 @@ const getUsers = async ({ page = 1, limit = 10, role, search = "" }) => {
           return normalizedName.includes(keyword);
         });
       }
+      const total = users.length;
+      const startIndex = (pageNumber - 1) * limitNumber;
+      const paginatedUsers = users.slice(startIndex, startIndex + limitNumber);
     return {
       total,
       page: pageNumber,
       limit: limitNumber,
-      users,
+      users: paginatedUsers,
     };
   } catch (error) {
     console.error("Lỗi khi lấy thông tin người dùng:", error);
