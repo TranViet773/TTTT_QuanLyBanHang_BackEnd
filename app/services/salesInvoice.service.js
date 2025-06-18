@@ -173,6 +173,22 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $lookup: {
                     from: 'accounts',
+                    localField: 'CREATED_BY_USER',
+                    foreignField: 'USER_ID',
+                    as: 'CREATED_BY'
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CREATED_BY',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+
+            {
+                $lookup: {
+                    from: 'accounts',
                     localField: 'SOLD_BY',
                     foreignField: 'USER_ID',
                     as: 'STAFF'
@@ -210,11 +226,12 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 $project: {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
+                    CREATED_BY: '$CREATED_BY.USERNAME',
                     CUSTOMER: '$CUSTOMER.USERNAME',
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
-                    DELIVERY_INFORMATION: '$DELIVER_INFORMATION',
+                    DELIVERY_INFORMATION: '$DELIVERY_INFORMATION',
                     NOTE: '$NOTE',
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
@@ -859,11 +876,11 @@ const updateInvoiceItems = async (items, originalItems) => {
 }
 
 const createInvoice = async (data) => {
-    const {status, soldBy, customerId, note, items, voucherGlobalId, 
+    const {status, soldBy, customerId, createdBy, note, items, voucherGlobalId, 
             tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod,
             name, country, city, district, ward, detail, phoneNumber, email} = data
     
-    if (!status || !soldBy || !items || !paymentMethod || !purchaseMethod) {
+    if (!status || !items || !paymentMethod || !purchaseMethod) {
         return {error: "Vui lòng nhập đầy đủ thông tin cần thiết cho hóa đơn."}
     }
 
@@ -872,12 +889,13 @@ const createInvoice = async (data) => {
     }
 
     if (purchaseMethod === 'ONLINE' || purchaseMethod === 'DELIVERY' || purchaseMethod === 'PRE_ORDER') {
-        if (!name || !country || !city || !district || !ward || !phoneNumber || !email) {
+        if (!name || !country || !city || !district || !ward || !phoneNumber) {
             return { error: 'Vui lòng nhập đầy đủ thông tin đặt hàng.' }
         }
     }
 
     try {
+
         if(soldBy && !await Account.findOne({ USER_ID: soldBy })) {
             return { error: "Nhân viên không tồn tại." }
         }
@@ -999,6 +1017,7 @@ const createInvoice = async (data) => {
 
         const invoiceData = {
             INVOICE_CODE: now.getTime(),
+            CREATED_BY_USER: createdBy,
             CUSTOMER_ID: customerId || null,
             SELL_DATE: now,
             SOLD_BY: soldBy || null,
@@ -1085,8 +1104,11 @@ const updateInvoiceStatus = async (invoice, status) => {
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
     }
-    if (status === 'DRAFT') {
-        return ({error: "Không thể cập nhật trạng thái DRAFT."})
+    if (invoice.STATUS === 'DRAFT' && status === 'DRAFT') {
+        return
+    }
+    if (invoice.STATUS !== 'DRAFT' && status === 'DRAFT') {
+        return ({error: `Không thể chuyển trạng thái hóa đơn ${invoice.STATUS} sang trạng thái DRAFT.`})
     }
     if (invoice.STATUS === 'PAYMENTED' || invoice.STATUS === 'CANCELLED') {
         return ({error: "Hóa đơn đã đạt trạng thái cuối."})

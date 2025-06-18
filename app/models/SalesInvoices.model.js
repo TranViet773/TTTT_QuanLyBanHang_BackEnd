@@ -7,6 +7,11 @@ const salesInvoices = new mongoose.Schema({
         unique: true,
     },
 
+    CREATED_BY_USER: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+
     CUSTOMER_ID: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -50,16 +55,13 @@ const salesInvoices = new mongoose.Schema({
                     },
                 }),
                 _id: false,
-                required: true,
             },
             PHONE_NUMBER: {
                 type: String,
-                required: true,
                 match: [/^\d+$/, 'Chỉ được chứa ký tự số']
             },
             EMAIL: {
                 type: String,
-                lowercase: true,
                 match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
             }
         }),

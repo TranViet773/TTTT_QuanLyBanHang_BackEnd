@@ -61,8 +61,16 @@ const getInvoiceByCode = async (req, res) => {
 const createInvoice = async (req, res) => {
     try {
         const data = req.body
+        data.CREATED_BY_USER = req.user.USER_ID
 
-        data.soldBy = req.user.USER_ID
+        if (req.user.IS_CUSTOMER) {
+            data.customerId = req.user.USER_ID
+            data.soldBy = null
+        }
+
+        else {
+            data.soldBy = req.user.USER_ID
+        }
 
         const response = await salesInvoiceService.createInvoice(data)
 

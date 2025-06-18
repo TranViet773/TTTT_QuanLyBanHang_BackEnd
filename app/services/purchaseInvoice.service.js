@@ -433,6 +433,10 @@ const createInvoice = async (data) => {
             return {error: "Người dùng không tồn tại."}
         }
 
+        if (statusName === 'REJECTED') {
+            return {error: 'Không thể tạo hóa đơn với status REJECTED.'}
+        }
+
         // lấy các document item tương ứng
         const {originalItems, backupItems, error} = await (async () => {
             try {

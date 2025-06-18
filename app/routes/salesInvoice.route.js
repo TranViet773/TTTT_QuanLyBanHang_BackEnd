@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const salesInvoiceController = require('../controllers/salesInvoice.controller');
 const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.middleware');
+const { checkRoleForCreatingMiddleware } = require('../middlewares/invoices.middleware')
 
 // Post 
-router.post('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.createInvoice)
+router.post('/', authenticateToken, checkRoleForCreatingMiddleware, salesInvoiceController.createInvoice)
 router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.updateInvoice)
 router.put('/removing-items/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.deleteItems)
 router.get('/', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.getAllInvoices)
