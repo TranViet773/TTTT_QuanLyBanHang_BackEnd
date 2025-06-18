@@ -371,6 +371,12 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 CITY: contact.CITY,
                 STATE: contact.STATE,
                 COUNTRY: contact.COUNTRY,
+                ROLE: {
+                    IS_ADMIN: user.ROLE.IS_ADMIN,
+                    IS_MANAGER: user.ROLE.IS_MANAGER,
+                    IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+                    IS_CUSTOMER: user.ROLE.IS_CUSTOMER
+                }
             }
         }
 
@@ -412,6 +418,22 @@ const getAllInvoices = async (query, user) => {
                     path: '$STAFF',
                     preserveNullAndEmptyArrays: true
                 }   // bung mảng thành document
+            },
+
+            {
+                $lookup: {
+                    from: 'accounts',
+                    localField: 'CREATED_BY_USER',
+                    foreignField: 'USER_ID',
+                    as: 'CREATED_BY'
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CREATED_BY',
+                    preserveNullAndEmptyArrays: true
+                }
             },
 
             {
@@ -551,11 +573,11 @@ const getAllInvoices = async (query, user) => {
             }
         }
 
-        if (user.IS_CUSTOMER) {
-            matchConditions.push({
-                CREATED_BY_USER: new ObjectId(user.USER_ID)
-            })
-        }
+        // if (user.IS_CUSTOMER) {
+        //     matchConditions.push({
+        //         CREATED_BY_USER: new ObjectId(user.USER_ID)
+        //     })
+        // }
 
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
@@ -571,6 +593,7 @@ const getAllInvoices = async (query, user) => {
             $project: {
                 _id: 0,
                 INVOICE_CODE: "$INVOICE_CODE",
+                CREATED_BY_USER: "$CREATED_BY.USERNAME",
                 CUSTOMER: {
                     USERNAME: "$CUSTOMER.USERNAME",
                     // EMAIL: "$CUSTOMER"
@@ -598,19 +621,21 @@ const getAllInvoices = async (query, user) => {
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
 
-
         // Lấy ra thông tin cơ bản của khách hàng
         for (let i=0; i < results.length; i++) {
             if (!results[i].CUSTOMER_INFO) {
                 continue
             }
+
+           
             const info = results[i].CUSTOMER_INFO
             const listContact = info.LIST_CONTACT            
+            console.log(listContact)
             const contact = authHelper.isValidInfo(listContact)
-            
-            results[i].CUSTOMER.FULL_NAME = contact.FULL_NAME
-            results[i].CUSTOMER.EMAIL = contact.EMAIL
-            results[i].CUSTOMER.PHONE_NUMBER = contact.PHONE_NUMBER
+
+            results[i].CUSTOMER.FULL_NAME = contact?.FULL_NAME
+            results[i].CUSTOMER.EMAIL = contact?.EMAIL
+            results[i].CUSTOMER.PHONE_NUMBER = contact?.PHONE_NUMBER
             
             delete results[i].CUSTOMER_INFO
         }
