@@ -191,11 +191,29 @@ const deleteInvoice = async (req, res) => {
     }
 }
 
+const statisticInvoiceBasedOnStatus = async (req, res) => {
+    try {
+        const response = await salesInvoiceService.statisticInvoiceBasedOnStatus()
+        return res.status(200).json({
+            success: true,
+            message: "Thống kê số lượng hóa đơn bán hàng theo trạng thái.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
     deleteItems,
-    deleteInvoice
+    deleteInvoice,
+    statisticInvoiceBasedOnStatus
 }
