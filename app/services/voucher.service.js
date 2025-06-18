@@ -328,6 +328,7 @@ const getAllVouchers = async ({
     return { error: "Error fetching vouchers" };
   }
 };
+
 const getVoucherById = async (voucherCode) => {
   try {
     const voucher = await Voucher.findOne({ VOUCHER_CODE: voucherCode })
@@ -574,8 +575,7 @@ const addItemsForVoucher = async (voucherCode, itemIds) => {
     if (
       voucher.IS_ACTIVE == false ||
       voucher.QUANTITY - voucher.NUMBER_USING <= 0 ||
-      voucher.END_DATE < currentDate ||
-      voucher.START_DATE > currentDate
+      voucher.END_DATE < currentDate
     )
       return { error: "Voucher không còn hợp lệ!" };
 
