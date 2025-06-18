@@ -6,6 +6,7 @@ const Voucher = require('../models/Vouchers.model')
 const voucherService = require('../services/voucher.service')
 const authHelper = require('../helpers/auth.helper')
 const invoiceHelper = require('../helpers/invoice.helper')
+const { ObjectId } = require('mongodb')
 const _ = require('lodash')
 
 
@@ -381,7 +382,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
     }
 }
 
-const getAllInvoices = async (query) => {
+const getAllInvoices = async (query, user) => {
     try {
 
         const {page, limits, search, status, buyer, seller, invoiceCode, minPrice, maxPrice, fromDate, toDate} = query
@@ -550,9 +551,15 @@ const getAllInvoices = async (query) => {
             }
         }
 
+        if (user.IS_CUSTOMER) {
+            matchConditions.push({
+                CREATED_BY_USER: new ObjectId(user.USER_ID)
+            })
+        }
+
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
-            console.log(matchConditions)
+            // console.log(matchConditions)
         }
 
         // tạo pipeline để đếm tổng số bản ghi
@@ -623,10 +630,13 @@ const getAllInvoices = async (query) => {
     
 }
 
-const getInvoiceByCode = async (invoiceCode) => {
+const getInvoiceByCode = async (invoiceCode, user) => {
     try {
 
         const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
+        if (user?.IS_CUSTOMER && invoice.CUSTOMER_ID?.toString() !== user?.USER_ID) {
+            return {error: `Không tìm thấy hoặc không có quyền truy cập vào hóa đơn ${invoiceCode}`}
+        }
 
         return await handleInvoiceDataForResponse(invoice)
     } catch (error) {
@@ -1085,7 +1095,6 @@ const checkValidVouchers = async (items) => {
             const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
             const isAvailable = voucherService.isVoucherAvailable(voucher)
             if (isAvailable?.error) {
-                item.PRODUCT_VOUCHER_ID = null
                 valid = false
             }
         }        
@@ -1175,6 +1184,7 @@ const updateInvoice = async (data) => {
             extraFee, extraFeeNote, extraFeeUnit, paymentMethod, purchaseMethod, tax} = data
     const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
     const backupInvoice = _.cloneDeep(invoice.toObject())
+    const now = new Date()
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
@@ -1182,6 +1192,26 @@ const updateInvoice = async (data) => {
 
     if (invoice.STATUS !== 'DRAFT') {
         return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
+    }
+
+    if (status === 'CANCELLED') {
+        if (invoice.STATUS !== 'DRAFT') {
+            return {error: `Không thể cập nhật trạng thái CANCELLED cho hóa đơn ${invoice.STATUS}`}
+        }
+
+        else {
+            try {
+                invoice.STATUS = status
+                invoice.UPDATED_AT = now
+
+                await invoice.save()
+
+                return await handleInvoiceDataForResponse(invoice)
+            } catch (error) {
+                console.log (error)
+                throw new Error ('Lỗi xảy ra khi cập nhật hóa đơn.')
+            }
+        }
     }
 
     try {
@@ -1260,7 +1290,7 @@ const updateInvoice = async (data) => {
         // cập nhật lại phương thức mua hàng (nếu có)
         invoice.PURCHASE_METHOD = purchaseMethod ? purchaseMethod : invoice.PURCHASE_METHOD
 
-        invoice.UPDATED_AT = new Date()
+        invoice.UPDATED_AT = now
 
         await invoice.save()
 

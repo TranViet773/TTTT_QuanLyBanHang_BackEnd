@@ -6,7 +6,7 @@ const isVoucherAvailable = (voucher) => {
   if (!voucher) {
     return {
       available: false,
-      error: "Voucher không tồn tại hoặc đã hết hạn",
+      error: `Voucher ${voucher.VOUCHER_CODE} không tồn tại hoặc đã hết hạn`,
     };
   }
   // kiem tra ngày bắt đầu và kết thúc của voucher

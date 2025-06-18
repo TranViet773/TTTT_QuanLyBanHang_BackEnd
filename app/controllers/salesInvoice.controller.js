@@ -5,7 +5,7 @@ const getAllInvoices = async (req, res) => {
 
         const query = {...req.query}
 
-        const response = await salesInvoiceService.getAllInvoices(query)
+        const response = await salesInvoiceService.getAllInvoices(query, req.user)
 
         if (response?.error) {
             return res.status(500).json({
@@ -33,7 +33,7 @@ const getInvoiceByCode = async (req, res) => {
     try {
         const invoiceCode = req.params.invoiceCode
         // const user = req.user
-        const response = await salesInvoiceService.getInvoiceByCode(invoiceCode)
+        const response = await salesInvoiceService.getInvoiceByCode(invoiceCode, req.user)
 
         if (response?.error) {
             return res.status(400).json({
