@@ -223,6 +223,7 @@ const logout = async (req, res) => {
         //Clear khỏi cookie
         res.clearCookie('accessToken');
         res.clearCookie('refreshToken');
+        req.session.destroy();
         return res.status(200).json({
             message: 'Đăng xuất thành công',
             success: true,

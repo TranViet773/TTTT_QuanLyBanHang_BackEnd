@@ -39,7 +39,11 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false, // Không lưu session nếu không được sửa đổi
   saveUninitialized: false,  // Lưu session ngay cả khi chưa có dữ liệu
-  cookie: { secure: false } // Để true nếu dùng HTTPS
+  cookie: { 
+    secure: false, // Để true nếu dùng HTTPS
+    maxAge: 24 * 60 * 60 * 60 * 1000
+   } 
+  
 }))
 
 app.use('/api/auth', authRoute);
