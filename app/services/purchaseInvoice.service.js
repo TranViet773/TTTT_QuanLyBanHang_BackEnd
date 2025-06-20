@@ -403,6 +403,11 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
                 item.ITEM_STOCKS.LAST_UPDATED = now
 
                 const price = authHelper.isValidInfo(item.PRICE)
+
+                if (price.PRICE_AMOUNT !== item.UNIT_PRICE) {
+                    
+                }
+
                 addItem.UNIT = price.get("UNIT")
                 addItem.UNIT_PRICE = price.PRICE_AMOUNT
                 addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY

@@ -1,4 +1,5 @@
 const salesInvoiceService = require('../services/salesInvoice.service')
+const invoiceHelper = require('../helpers/invoice.helper')
 
 const getAllInvoices = async (req, res) => {
     try {
@@ -57,20 +58,9 @@ const getInvoiceByCode = async (req, res) => {
     }
 }
 
-
 const createInvoice = async (req, res) => {
     try {
-        const data = req.body
-        data.CREATED_BY_USER = req.user.USER_ID
-
-        if (req.user.IS_CUSTOMER) {
-            data.customerId = req.user.USER_ID
-            data.soldBy = null
-        }
-
-        else {
-            data.soldBy = req.user.USER_ID
-        }
+        const data = invoiceHelper.standardizationData(req.body)
 
         const response = await salesInvoiceService.createInvoice(data)
 
@@ -99,7 +89,7 @@ const createInvoice = async (req, res) => {
 const updateInvoice = async (req, res) => {
     try {
 
-        const data = req.body
+        const data = invoiceHelper.standardizationData(req.body)
         data.invoiceCode = req.params.invoiceCode
         data.userId = req.user
         
@@ -216,6 +206,32 @@ const statisticInvoiceBasedOnStatus = async (req, res) => {
     }
 }
 
+const cancelOrder = async (req, res) => {
+    try {
+        const response = await salesInvoiceService.cancelOrder(req.params.invoiceCode, req.user)
+        
+        if (response?.error) {
+            return res.status(400).json({
+                success: false,
+                message: response.error,
+                data: null,
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Hủy đơn hàng thành công.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
@@ -223,5 +239,6 @@ module.exports = {
     updateInvoice,
     deleteItems,
     deleteInvoice,
-    statisticInvoiceBasedOnStatus
+    statisticInvoiceBasedOnStatus,
+    cancelOrder,
 }

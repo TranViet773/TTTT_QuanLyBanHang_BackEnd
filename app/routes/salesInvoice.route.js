@@ -8,6 +8,7 @@ const { checkRoleForCreatingMiddleware } = require('../middlewares/invoices.midd
 router.post('/', authenticateToken, checkRoleForCreatingMiddleware, salesInvoiceController.createInvoice)
 router.put('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.updateInvoice)
 router.put('/removing-items/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.deleteItems)
+router.put('/cancelling-order/:invoiceCode', authenticateToken, salesInvoiceController.cancelOrder)
 router.get('/', authenticateToken, salesInvoiceController.getAllInvoices)
 router.get('/statistic-based-on-status', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticInvoiceBasedOnStatus)
 router.get('/:invoiceCode', authenticateToken, salesInvoiceController.getInvoiceByCode)

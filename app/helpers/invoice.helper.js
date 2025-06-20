@@ -46,8 +46,19 @@ const isValidStatus = (listStatus) => {
     )
 };
 
+const standardizationData = (data) => {
+    const standardizationValue = {
+        ...data,
+        tax: Number.parseInt(data.tax),
+        extraFee: Number.parseInt(data.extraFee),
+    }
+    
+    return standardizationValue
+}
+
 module.exports = {
     getItemDocument,
     rollbackItems,
-    isValidStatus
+    isValidStatus,
+    standardizationData
 }

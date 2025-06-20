@@ -58,7 +58,7 @@ const salesInvoices = new mongoose.Schema({
             },
             PHONE_NUMBER: {
                 type: String,
-                match: [/^\d+$/, 'Chỉ được chứa ký tự số']
+                match: [/^\+?[0-9\s]+$/, 'Chỉ được chứa ký tự số']
             },
             EMAIL: {
                 type: String,

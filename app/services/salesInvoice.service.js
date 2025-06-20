@@ -270,14 +270,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
         const listVoucher = response[0].LIST_VOUCHER_ACTIVE
         const listItemType = response[0].LIST_ITEM_TYPE
 
-        console.log("list item type: ", listItemType)
-
         if(listVoucher){
             for (let i = 0; i < response[0].ITEMS.length; i++) {
                 const item = response[0].ITEMS[i]
 
                 const detail = item.ITEM_DETAIL
-                console.log(detail)
 
                 const vouchers = detail.LIST_VOUCHER_ACTIVE
 
@@ -305,8 +302,6 @@ const handleInvoiceDataForResponse = async (invoice) => {
 
                 const itemType = detail.ITEM_TYPE
                 for (const type of listItemType) {
-                    console.log("type: ", type)
-                    console.log("item type:", itemType)
                     if (detail.ITEM_TYPE.equals(type._id)) {
                         detail.ITEM_TYPE_NAME = type.ITEM_TYPE_NAME
                     }
@@ -573,11 +568,11 @@ const getAllInvoices = async (query, user) => {
             }
         }
 
-        // if (user.IS_CUSTOMER) {
-        //     matchConditions.push({
-        //         CREATED_BY_USER: new ObjectId(user.USER_ID)
-        //     })
-        // }
+        if (user.IS_CUSTOMER) {
+            matchConditions.push({
+                CREATED_BY_USER: new ObjectId(user.USER_ID)
+            })
+        }
 
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
@@ -962,7 +957,7 @@ const createInvoice = async (data) => {
 
 
         // tạo hóa đơn trực tiếp
-        if (status === 'CONFIRMED' || status === 'PAYMENTED') {
+        if (status === 'CONFIRMED' || status === 'PAYMENTED' || purchaseMethod === 'ONLINE') {
 
             // Update số lượng item
             const updatingData = await updateItemForExporting(items, originalItems, backupItems, now)
@@ -1203,6 +1198,99 @@ const updateInvoiceStatus = async (invoice, status) => {
     }
 }
 
+const rollbackDataForCancellingOrder = async (invoice) => {
+    const now = new Date()
+    const {originalItems, backupItems, error} = await (async () => {
+        try {
+            // const itemCodes = invoice.ITEMS.map(item => item.ITEM_CODE)
+            return invoiceHelper.getItemDocument(invoice.ITEMS)
+        } catch (error) {
+            console.log(error)
+            throw new Error(error.message)
+        }
+    })()
+
+    if (error) {
+        return {error: "Lỗi khi truy vấn dữ liệu items."}
+    }
+
+    let count = 0
+    const backupVouchers = []
+    const originalVouchers = []
+
+    try {
+        for (const origin of originalItems) {
+            for (const item of invoice.ITEMS) {
+                if (origin.ITEM_CODE === item.ITEM_CODE) {
+                    origin.ITEM_STOCKS.QUANTITY += item.QUANTITY
+                    origin.UPDATED_AT = now
+
+                    try {
+                        await origin.save()
+                        count++
+                    } catch (error) {
+                        throw new Error ("Lỗi xảy ra khi cập nhật số lượng items.")
+                    }
+
+                    if (item.PRODUCT_VOUCHER_ID) {
+                        const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
+                        if (!voucher) {
+                            if (originalVouchers.length > 0) {
+                                await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+                            }
+                            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                            return {error: `Không tìm thấy voucher ${item.PRODUCT_VOUCHER_ID}`}
+                        }
+                        
+                        backupVouchers.push({...voucher.toObject?.() || voucher})
+
+                        voucher.NUMBER_USING -= item.QUANTITY
+                        try {
+                            await voucher.save()
+                            originalVouchers.push(voucher)
+                        } catch (error) {
+                            console.log(error)
+                            throw new Error ("Lỗi khi cập nhật số lượng sử dụng vouchers.")
+                        }
+                    }
+
+                    break
+                }
+            }
+        }
+
+        if (invoice.VOUCHER_GLOBAL_ID) {
+            const voucher = await Voucher.findById(invoice.VOUCHER_GLOBAL_ID)
+
+            if (!voucher) {
+                if (originalVouchers.length > 0) {
+                    await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+                }
+                await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                return {error: `Không tìm thấy voucher ${invoice.VOUCHER_GLOBAL_ID}`}
+            }
+
+            voucher.NUMBER_USING -= 1
+
+            try {
+                await voucher.save()
+            } catch (error) {
+                console.log(error)
+                throw new Error (`Lỗi khi cập nhật số lượng sử dụng voucher ${invoice.VOUCHER_GLOBAL_ID}`)
+            }
+        }
+
+    } catch (error) {
+        if (originalVouchers.length > 0) {
+            await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+        }
+        await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+        
+        console.log(error)
+        throw new Error ("Lỗi xảy ra khi cập nhật dữ liệu.")
+    }
+}
+
 const updateInvoice = async (data) => {
 
     const {items, invoiceCode, status, globalVoucher, note, 
@@ -1224,18 +1312,23 @@ const updateInvoice = async (data) => {
             return {error: `Không thể cập nhật trạng thái CANCELLED cho hóa đơn ${invoice.STATUS}`}
         }
 
-        else {
-            try {
-                invoice.STATUS = status
-                invoice.UPDATED_AT = now
-
-                await invoice.save()
-
-                return await handleInvoiceDataForResponse(invoice)
-            } catch (error) {
-                console.log (error)
-                throw new Error ('Lỗi xảy ra khi cập nhật hóa đơn.')
+        if (invoice.PURCHASE_METHOD === 'ONLINE') {
+            const response = await rollbackDataForCancellingOrder(invoice)
+            if (response?.error) {
+                return response
             }
+        }
+        
+        try {
+            invoice.STATUS = status
+            invoice.UPDATED_AT = now
+
+            await invoice.save()
+
+            return await handleInvoiceDataForResponse(invoice)
+        } catch (error) {
+            console.log (error)
+            throw new Error ('Lỗi xảy ra khi cập nhật hóa đơn.')
         }
     }
 
@@ -1459,6 +1552,33 @@ const statisticInvoiceBasedOnStatus = async () => {
     }
 }
 
+const cancelOrder = async (invoiceCode, user) => {
+    try {
+        const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
+
+        if (!invoice || invoice.CREATED_BY_USER.toString() !== user.USER_ID) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode} hoặc không có quyền truy cập.`}
+        }
+
+        if (invoice.STATUS !== 'DRAFT') {
+            return {error: `Không thể hủy đơn hàng có trạng thái ${invoice.STATUS}.`}
+        }
+
+        const response = await rollbackDataForCancellingOrder(invoice)
+        if (response?.error) {
+            return response
+        }
+
+        invoice.STATUS = 'CANCELLED'
+        invoice.UPDATED_AT = new Date()
+
+        await invoice.save()
+        return await handleInvoiceDataForResponse(invoice)
+    } catch(error) {
+        console.log(error)
+        throw new Error('Lỗi xảy ra khi hủy đơn hàng.')
+    }
+}
 
 module.exports = {
     getAllInvoices,
@@ -1467,5 +1587,6 @@ module.exports = {
     updateInvoice,
     deleteItems,
     deleteInvoice,
-    statisticInvoiceBasedOnStatus
+    statisticInvoiceBasedOnStatus,
+    cancelOrder,
 }
