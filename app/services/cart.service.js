@@ -22,14 +22,15 @@ const addItemToCart = async (session, itemCode, quantity) =>{
 
         if(quantity > existingItem.ITEM_STOCKS.QUANTITY)
             return {error: "Số lượng vượt quá số lượng tồn kho!"};
-
+        const validPrice = itemHelper.isValidPrice(existingItem.PRICE);
         const maxDiscount = await getMinPriceAfterApplyVoucher(existingItem);
         //console.log(maxDiscount)
         const itemData = {
             ITEM_CODE: existingItem.ITEM_CODE,
             ITEM_NAME: existingItem.ITEM_NAME,
             ITEM_AVATAR: existingItem.AVATAR_IMAGE_URL,
-            ITEM_PRICE: maxDiscount.priceAppliedVoucher,
+            ITEM_DISCOUNTED_PRICE: maxDiscount.priceAppliedVoucher,
+            ITEM_PRICE:  validPrice.PRICE_AMOUNT,
             ITEM_TYPE_NAME: item_type.ITEM_TYPE_NAME,
             ITEM_UNIT: existingItem.UNIT,
             VOUCHER_CODE: maxDiscount?.maxDiscountVoucher?.VOUCHER_CODE,
@@ -197,9 +198,9 @@ const getCartByUser = async (session) => {
                 //return {error: "Sản phẩm không tồn tại!"}; 
             const maxDiscount = await getMinPriceAfterApplyVoucher(existingItem);
             console.log(maxDiscount);
-            if(item.ITEM_PRICE != maxDiscount.priceAppliedVoucher) // cập nhật lại giá.
+            if(item.ITEM_DISCOUNTED_PRICE != maxDiscount.priceAppliedVoucher) // cập nhật lại giá.
             {
-                item.ITEM_PRICE = maxDiscount.priceAppliedVoucher;
+                item.ITEM_DISCOUNTED_PRICE = maxDiscount.priceAppliedVoucher;
                 item.VOUCHER_CODE = maxDiscount.maxDiscountVoucher.VOUCHER_CODE;
             }
         }
