@@ -1511,7 +1511,10 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
             if (invoice.STATUS !== 'DRAFT') {
                 return {error: `Không thể xóa hóa đơn ở trạng thái ${invoice.STATUS}.`}
             }
-
+            if (invoiceData.PURCHASE_METHOD === 'ONLINE' || invoiceData.PURCHASE_METHOD === 'PRE_ORDER') {
+                return { error: `Không thể xóa hóa đơn được mua bằng phương thức ${invoiceData.PURCHASE_METHOD}.` }
+            }
+            
             await SalesInvoice.findByIdAndDelete(invoice._id)
             return
         }
@@ -1520,6 +1523,11 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
         if (!invoiceData) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
         }
+
+        if (invoiceData.PURCHASE_METHOD === 'ONLINE' || invoiceData.PURCHASE_METHOD === 'PRE_ORDER') {
+            return { error: `Không thể xóa hóa đơn được mua bằng phương thức ${invoiceData.PURCHASE_METHOD}.` }
+        }
+
         if (invoiceData.STATUS !== 'DRAFT') {
             return {error: `Không thể xóa hóa đơn ở trạng thái ${invoiceData.STATUS}.`}
         }
