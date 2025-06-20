@@ -175,7 +175,7 @@ const deleteInvoice = async (req, res) => {
             })
         }
 
-        return res.status(400).json({
+        return res.status(200).json({
             message: "Xóa hóa đơn thành công.",
             success: true,
             data: null

@@ -1,4 +1,5 @@
 const PurchaseInvoice = require("../models/PurchaseInvoices.model")
+const UnitInvoice = require("../models/UnitInvoice.model")
 const Supplier = require("../models/Supplier.model")
 const Account = require("../models/Account.model")
 const User = require("../models/User.model")
@@ -387,14 +388,27 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
     // duyệt qua mảng items đầu vào
     for(const addItem of items) {       // không dùng forEach vì await có thể không hoạt động đúng mong đợi (forEach không đợi, sai ngữ cảnh)
 
-        // tính tổng tiền cho item
-        addItem.TOTAL_PRICE = addItem.UNIT_PRICE * addItem.QUANTITY
+        addItem.UNIT_PRICE = Number(addItem.UNIT_PRICE)
+        addItem.QUANTITY = Number(addItem.QUANTITY)
+
+        if (!addItem.UNIT_PRICE || !addItem.QUANTITY) {
+            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+            return({error: `Vui lòng nhập đầy đủ thông tin chi tiết cho item ${addItem.ITEM_CODE}.`})
+        }
+
+        if (!addItem.UNIT || !await UnitInvoice.findById(addItem.UNIT)) {
+            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+            return({error: `Đơn vị tiền tệ của item ${addItem.ITEM_CODE} không tồn tại.`})
+        }
 
         // kiểm tra nhà cung cấp có tồn tại
-        if(!await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
+        if(!addItem.SUPPLIER_ID || !await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
             await invoiceHelper.rollbackItems(count, originalItems, backupItems)
-            return({error: "Nhà cung cấp không tồn tại."})
+            return({error: `Nhà cung cấp của item ${addItem.ITEM_CODE} không tồn tại.`})
         }
+
+        // tính tổng tiền cho item
+        addItem.TOTAL_PRICE = addItem.UNIT_PRICE * addItem.QUANTITY
         
         // cập nhật số lượng và thời gian update cho document item trong DB
         for(const item of originalItems) {
@@ -404,13 +418,16 @@ const updateItemForImporting = async (items, originalItems, backupItems, now) =>
 
                 const price = authHelper.isValidInfo(item.PRICE)
 
-                if (price.PRICE_AMOUNT !== item.UNIT_PRICE) {
-                    
-                }
+                if (price.PRICE_AMOUNT !== addItem.UNIT_PRICE) {
+                    item.PRICE.push({
+                        PRICE_AMOUNT: addItem.UNIT_PRICE,
+                        UNIT: addItem.UNIT,
+                        FROM_DATE: now,
+                        THRU_DATE: null
+                    })
 
-                addItem.UNIT = price.get("UNIT")
-                addItem.UNIT_PRICE = price.PRICE_AMOUNT
-                addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
+                    price.THRU_DATE = now
+                }
                 
                 try {
                     await item.save()
@@ -479,24 +496,29 @@ const createInvoice = async (data) => {
         else {
             for(const addItem of items) {          
               
-                if (!addItem.SUPPLIER_ID || !await Supplier.findById(addItem.SUPPLIER_ID)) {
-                    return ({ error: `Không tìm thấy nhà cung cấp của item ${addItem.ITEM_CODE}` })
+                addItem.UNIT_PRICE = Number(addItem.UNIT_PRICE)
+                addItem.QUANTITY = Number(addItem.QUANTITY)
+
+                if (!addItem.UNIT_PRICE || !addItem.QUANTITY) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    return({error: `Vui lòng nhập đầy đủ thông tin chi tiết cho item ${addItem.ITEM_CODE}.`})
                 }
+
+                if (!addItem.UNIT || !await UnitInvoice.findById(addItem.UNIT)) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    return({error: `Đơn vị tiền tệ của item ${addItem.ITEM_CODE} không tồn tại.`})
+                }
+
+                // kiểm tra nhà cung cấp có tồn tại
+                if(!addItem.SUPPLIER_ID || !await Supplier.findOne({ _id: addItem.SUPPLIER_ID })) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                    return({error: `Nhà cung cấp của item ${addItem.ITEM_CODE} không tồn tại.`})
+                }
+
+                // tính tổng tiền cho item
+                addItem.TOTAL_PRICE = addItem.UNIT_PRICE * addItem.QUANTITY
                 
-                for(const item of originalItems) {
-
-                    if(item.ITEM_CODE === addItem.ITEM_CODE) {
-
-                        const price = authHelper.isValidInfo(item.PRICE)
-                        addItem.UNIT = price.get("UNIT")
-                        addItem.UNIT_PRICE = price.PRICE_AMOUNT
-                        addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
-
-                        console.log(addItem)
-
-                        totalAmount += addItem.TOTAL_PRICE
-                    }
-                }
+                totalAmount += addItem.TOTAL_PRICE
             }
         }
 

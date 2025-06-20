@@ -386,7 +386,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query, user) => {
     try {
 
-        const {page, limits, search, status, buyer, seller, invoiceCode, minPrice, maxPrice, fromDate, toDate} = query
+        const {page, limits, search, status, buyer, seller, invoiceCode,
+                minPrice, maxPrice, fromDate, toDate, purchaseMethod} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -566,6 +567,10 @@ const getAllInvoices = async (query, user) => {
                     }
                 })
             }
+        }
+
+        if (purchaseMethod?.trim()) {
+            matchConditions.push({ PURCHASE_METHOD: { $regex: purchaseMethod, $options: 'i' }})
         }
 
         if (user.IS_CUSTOMER) {
