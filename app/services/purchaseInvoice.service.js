@@ -1,15 +1,16 @@
 const PurchaseInvoice = require("../models/PurchaseInvoices.model")
 const UnitInvoice = require("../models/UnitInvoice.model")
 const Supplier = require("../models/Supplier.model")
+const Item = require("../models/Item.model")
 const Account = require("../models/Account.model")
 const User = require("../models/User.model")
 const authHelper = require("../helpers/auth.helper")
 const invoiceHelper = require('../helpers/invoice.helper')
 const { ObjectId } = require('mongodb')
-const purcharseInvoice = require("../models/PurchaseInvoices.model");
+const _ = require('lodash')
+
 
 const handleInvoiceDataForResponse = async (invoice) => {
-    console.log(invoice)
 
     try {
         const pipeline = [
@@ -96,7 +97,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
             },
             {
                 $unset: [
-                    "ITEMS.SUPPLIER.IS_ACTIVE", "ITEMS.SUPPLIER._id", "ITEMS.SUPPLIER_ID",
+                    "ITEMS.SUPPLIER.IS_ACTIVE", "ITEMS.SUPPLIER_ID",
                     "ITEMS.ITEM_DETAIL._id", "ITEMS.ITEM_DETAIL.ITEM_CODE", "ITEMS.ITEM_DETAIL.ITEM_TYPE", "ITEMS.ITEM_DETAIL.UNIT",
                     "ITEMS.ITEM_DETAIL.PRICE", "ITEMS.ITEM_DETAIL.DESCRIPTION", "ITEMS.ITEM_DETAIL.CREATED_AT",
                     "ITEMS.ITEM_DETAIL.UPDATED_AT", "ITEMS.ITEM_DETAIL.IMPORTED_BY", "ITEMS.ITEM_DETAIL.ITEM_STOCKS",
@@ -339,14 +340,15 @@ const getAllInvoices = async (query) => {
         pipeline.push({ $skip: skip })
         pipeline.push({ $limit: limitNumber })
 
-        console.log(JSON.stringify(pipeline, null, 2));
+        // console.log(JSON.stringify(pipeline, null, 2));
 
         const [totalResult, results] = await Promise.all([
             PurchaseInvoice.aggregate(totalPipeline),
             PurchaseInvoice.aggregate(pipeline)
         ])
 
-        console.log(results)
+        // console.log(results)
+
 
         // const results = await PurchaseInvoicesModel.aggregate(pipeline)
                         
@@ -371,8 +373,6 @@ const getAllInvoices = async (query) => {
 const getInvoiceByCode = async (invoiceCode, user) => {
     try {
         const invoice = await PurchaseInvoice.findOne({INVOICE_CODE: invoiceCode})
-
-        console.log(invoice)
 
         return await handleInvoiceDataForResponse(invoice)
     } catch (error) {
@@ -469,8 +469,6 @@ const createInvoice = async (data) => {
             }
         })()
 
-        console.log(originalItems)
-
         if (error) {
             return error
         }
@@ -483,7 +481,7 @@ const createInvoice = async (data) => {
         if (statusName === 'CONFIRMED' || statusName === 'PAYMENTED') {
             const updatingData = await updateItemForImporting(items, originalItems, backupItems, now)
 
-            console.log(updatingData)
+            // console.log(updatingData)
 
             if (updatingData.errorItemUpdating) {
                 return updatingData
@@ -568,7 +566,7 @@ const createInvoice = async (data) => {
 }
 
 const updateInvoice = async (data) => {
-    const {invoiceCode, statusName} = data
+    const {invoiceCode, statusName, extraFee, extraFeeUnit, extraFeeNote, tax, items, paymented} = data
     const now = new Date()
     let count = 0       // đếm document
 
@@ -578,28 +576,14 @@ const updateInvoice = async (data) => {
         return ({error: "Không tìm thấy hóa đơn."})
     }
 
-    let statusFlag = false
+    const backupInvoice = _.cloneDeep(invoice.toObject())
+    const lastStatus = invoiceHelper.isValidStatus(invoice.STATUS)
 
-    if (statusName === 'DRAFT') {
-        return ({error: "Không thể cập nhật trạng thái DRAFT."})
+    if (lastStatus.STATUS_NAME === 'PAYMENTED' || lastStatus.STATUS_NAME === 'REJECTED') {
+        return ({error: `Hóa đơn đã đạt trạng thái cuối (${lastStatus.STATUS_NAME})).`})
     }
 
-    invoice.STATUS.slice().reverse().forEach(status => {
-        if (status.STATUS_NAME === 'PAYMENTED' || status.STATUS_NAME === 'REJECTED') {
-            statusFlag = 1
-            return
-        }  
-        if (status.STATUS_NAME === 'CONFIRMED' && statusName !== 'PAYMENTED') {
-            statusFlag = 2
-            return
-        }
-    })
-
-    if (statusFlag === 1) {
-        return ({error: "Hóa đơn đã đạt trạng thái cuối."})
-    }
-
-    if (statusFlag === 2) {
+    if (lastStatus.STATUS_NAME === 'CONFIRMED' && statusName !== 'PAYMENTED') {
         return ({ error: `Không thể chuyển sang trạng thái ${statusName} cho hóa đơn đã được xác nhận.` })
     }
 
@@ -614,48 +598,135 @@ const updateInvoice = async (data) => {
             }
         })()
 
-        console.log(originalItems)
+        // console.log(originalItems)
 
         if (error) {
             return error
         }
 
-        try {
-            const lastStatus = authHelper.isValidInfo(invoice.STATUS)
-            lastStatus.THRU_DATE = now
-            console.log("Last status:", lastStatus)
+        if (lastStatus === 'DRAFT') {
 
-            invoice.STATUS.push({
-                STATUS_NAME: statusName,
-                FROM_DATE: now,
-                THRU_DATE: null
-            })
+            if (items && items.length > 0) {
+                let totalAmount = 0
+                for (const newItem of items) {
+                    let flag = false
+                    newItem.UNIT_PRICE = Number(newItem.UNIT_PRICE)
+                    newItem.QUANTITY = Number(newItem.QUANTITY)
+                    
+                    if (!newItem.QUANTITY) {
+                        Object.assign(invoice, backupInvoice)
+                        return { error: `Vui lòng nhập số lượng hàng hóa nhập kho cho item ${newItem.ITEM_CODE}.` }
+                    }
+                    if (!newItem.UNIT_PRICE) {
+                        Object.assign(invoice, backupInvoice)
+                        return { error: `Vui lòng nhập giá nhập hàng cho item ${newItem.ITEM_CODE}.` }
+                    }
 
-            if (
-                (lastStatus.STATUS_NAME === 'DRAFT' || lastStatus.STATUS_NAME === 'PENDING_APPROVAL') && 
-                (statusName === 'CONFIRMED' || (statusName === 'PAYMENTED' && lastStatus.STATUS_NAME !== 'CONFIRMED'))
-            ) {
-                const updateItems = await updateItemForImporting(invoice.ITEMS, originalItems, backupItems, now)
+                    for (let i=0; i < invoice.ITEMS.length; i++) {
+                        if ( newItem.ITEM_CODE === invoice.ITEMS[i].ITEM_CODE 
+                            && newItem.SUPPLIER_ID === invoice.ITEMS[i].SUPPLIER_ID.toString()
+                        ) {
+                            console.log("Flag")
+                            if (newItem.UNIT.trim() && newItem.UNIT !== invoice.ITEMS[i].UNIT.toString()) {
+                                if (!await UnitInvoice.findById(newItem.UNIT)) {
+                                    Object.assign(invoice, backupInvoice)
+                                    return { error: `Đơn vị tiền tệ của item ${newItem.ITEM_CODE} không tồn tại.` }
+                                }
 
-                if (updateItems.error) {
-                    return updateItems
+                                invoice.ITEMS[i].UNIT = newItem.UNIT
+                            }
+
+                            invoice.ITEMS[i].QUANTITY = newItem.QUANTITY
+                            invoice.ITEMS[i].UNIT_PRICE = newItem.UNIT_PRICE
+                            invoice.ITEMS[i].TOTAL_PRICE = newItem.UNIT_PRICE * newItem.QUANTITY
+
+                            flag = true
+                            break
+                        }
+                    }
+
+                    if (flag) {
+                        continue
+                    }
+
+                    else {
+                        if (!newItem.ITEM_CODE.trim() && !await Item.findOne({ITEM_CODE: newItem.ITEM_CODE})) {
+                            Object.assign(invoice, backupInvoice)
+                            return {error: `Item ${newItem.ITEM_CODE || "rỗng hoặc"} không tồn tại.` }
+                        }
+
+                        if (!newItem.UNIT.trim() && !await UnitInvoice.findById(newItem.UNIT)) {
+                            Object.assign(invoice, backupInvoice)
+                            return {error: `Đơn vị tiền tệ của item ${newItem.ITEM_CODE} rỗng hoặc không tồn tại.` }
+                        }
+
+                        invoice.ITEMS.push({
+                            ITEM_CODE: newItem.ITEM_CODE,
+                            QUANTITY: newItem.QUANTITY,
+                            UNIT: newItem.UNIT,
+                            UNIT_PRICE: newItem.UNIT_PRICE,
+                            TOTAL_PRICE: newItem.UNIT_PRICE * newItem.QUANTITY
+                        })
+                    }
                 }
 
-                count = updateItems.count             
+                for (const item of invoice.ITEMS) {
+                    totalAmount += item.TOTAL_PRICE
+                }
             }
 
-            const updateInvoice = await invoice.save()
-            return await handleInvoiceDataForResponse(updateInvoice)
+            if ( extraFeeUnit.trim() && invoice.EXTRA_FEE_UNIT.toString() !== extraFeeUnit 
+                && !await UnitInvoice.findById(extraFeeUnit)
+            ) {
+                return { error: `Đơn vị tiền tệ của chi phí phát sinh không tồn tại.` }
+            }
 
-        } catch (error) {
-
-            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
-
-            console.log(error)
-            throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
+            invoice.EXTRA_FEE = extraFee ? extraFee : invoice.EXTRA_FEE
+            invoice.EXTRA_FEE_UNIT = extraFeeUnit.trim() ? extraFeeUnit : invoice.EXTRA_FEE_UNIT
+            invoice.EXTRA_FEE_NOTE = extraFeeNote.trim() ? extraFeeNote : invoice.EXTRA_FEE_NOTE
+            invoice.TAX = tax ? tax : invoice.TAX
+            invoice.TOTAL_AMOUNT = totalAmount > 0 ? totalAmount : invoice.TOTAL_AMOUNT
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = tax && extraFee ? invoice.TOTAL_AMOUNT + invoice.TOTAL_AMOUNT * (tax/100)  + extraFee :
+                                                tax && !extraFee ? invoice.TOTAL_AMOUNT + invoice.TOTAL_AMOUNT * (tax/100) :
+                                                !tax && extraFee ? invoice.TOTAL_AMOUNT + extraFee : invoice.TOTAL_AMOUNT
         }
+
+        if (statusName.trim()) {
+            if (statusName !== 'DRAFT') {
+                lastStatus.THRU_DATE = now
+                // console.log("Last status:", lastStatus)
+
+                invoice.STATUS.push({
+                    STATUS_NAME: statusName,
+                    FROM_DATE: now,
+                    THRU_DATE: null
+                })
+
+                if (
+                    (lastStatus.STATUS_NAME === 'DRAFT' || lastStatus.STATUS_NAME === 'PENDING_APPROVAL') && 
+                    (statusName === 'CONFIRMED' || (statusName === 'PAYMENTED' && lastStatus.STATUS_NAME !== 'CONFIRMED'))
+                ) {
+                    const updateItems = await updateItemForImporting(invoice.ITEMS, originalItems, backupItems, now)
+
+                    if (updateItems.error) {
+                        Object.assign(invoice, backupInvoice)
+                        return updateItems
+                    }
+
+                    count = updateItems.count             
+                }
+            }        
+        }
+
+        await invoice.save()
+        return await handleInvoiceDataForResponse(invoice)
+
     } catch (error) {
-        throw new Error(error)
+        await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+        Object.assign(invoice, backupInvoice)
+        
+        console.log(error)
+        throw new Error("Lỗi khi cập nhật trạng thái hóa đơn.")
     }
 }
 
