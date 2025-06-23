@@ -208,6 +208,58 @@ const statisticInvoiceBasedOnStatus = async (req, res) => {
     }
 }
 
+const statisticsRevenueLast7Days = async (req, res) => {
+    try {
+        const response = await salesInvoiceService.statisticsRevenueLast7Days()
+        return res.status(200).json({
+            success: true,
+            message: "Thống kê doanh thu trong 7 ngày qua.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
+const statisticsRevenueLast4Weeks = async (req, res) => {
+    try {
+        console.log(req?.query?.date);
+        const response = await salesInvoiceService.statisticsRevenueLast4Weeks(req?.query?.date);
+        return res.status(200).json({
+            success: true,
+            message: "Thống kê doanh thu trong 4 tuần qua.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
+const statisticsRevenueLast4Months = async (req, res) => {
+    try {
+        const response = await salesInvoiceService.statisticsRevenueLast4Months()
+        return res.status(200).json({
+            success: true,
+            message: "Thống kê doanh thu trong 4 tháng qua.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
@@ -215,5 +267,8 @@ module.exports = {
     updateInvoice,
     deleteItems,
     deleteInvoice,
-    statisticInvoiceBasedOnStatus
+    statisticInvoiceBasedOnStatus,
+    statisticsRevenueLast7Days,
+    statisticsRevenueLast4Weeks,
+    statisticsRevenueLast4Months
 }
