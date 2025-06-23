@@ -52,7 +52,16 @@ const getItemTypeById = async (req, res) => {
 const getItemTypeByName = async (req, res) => {
     try {
         const { name = '' } = req.query;
+        console.log('Fetching item type by name:', name);
         const itemType = await itemTypeService.getItemTypeByName(name);
+        console.log('Fetched item type:', itemType);
+        if(itemType === null) {
+            return res.status(404).json({
+                message: 'Item type not found',
+                success: false,
+                data: null,
+            });
+        }
         if (itemType.error) {
             return res.status(500).json({
                 message: itemType.error,
