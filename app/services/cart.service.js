@@ -26,6 +26,7 @@ const addItemToCart = async (session, itemCode, quantity) =>{
         const maxDiscount = await getMinPriceAfterApplyVoucher(existingItem);
         //console.log(maxDiscount)
         const itemData = {
+            ITEM_ID: existingItem._id,
             ITEM_CODE: existingItem.ITEM_CODE,
             ITEM_NAME: existingItem.ITEM_NAME,
             ITEM_AVATAR: existingItem.AVATAR_IMAGE_URL,
