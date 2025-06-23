@@ -1842,6 +1842,100 @@ const statisticsRevenueLast4Months = async () => {
   };
 };
 
+const statisticsSalesItem = async(query) => {
+    const {fromDate, toDate} = query
+    const matchConditions = {
+        STATUS: "PAYMENTED",
+    }
+
+    if (fromDate && fromDate.trim()) {
+        if (toDate && toDate.trim()) {
+            matchConditions.SELL_DATE = {
+                $gte: new Date((new Date(fromDate)).setHours(0,0,0,0)),
+                $lte: new Date((new Date(toDate)).setHours(23,59,59,999))      
+            }
+        }
+
+        else {
+            matchConditions.SELL_DATE = {
+                $gte: new Date((new Date(fromDate)).setHours(0,0,0,0))
+            }
+        }
+    }
+
+    else {
+        if (toDate && toDate.trim()) {
+            matchConditions.SELL_DATE = {
+                $lte: new Date((new Date(toDate)).setHours(23,59,59,999)) 
+            }
+        }
+    }
+
+    // pipeline.push({
+    //     $match: matchConditions
+    // })
+    // pipline.push
+    console.log(matchConditions)
+    const pipeline = [
+        {
+            $match: matchConditions
+        },
+        {
+            $unwind: {
+                path: "$ITEMS",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                item: "$ITEMS"
+            }
+        },
+        {
+            $group: {
+                _id: "$item.ITEM_CODE",
+                quantity: { $sum: "$item.QUANTITY" },
+                total_amount: { $sum: "$item.TOTAL_PRICE" }
+            }
+        },
+    ]
+
+    console.log(pipeline)
+    const listItem = await SalesInvoice.aggregate([
+        {
+            $match: matchConditions
+        },
+        {
+            $unwind: {
+                path: "$ITEMS",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                item: "$ITEMS"
+            }
+        },
+        {
+            $group: {
+                _id: "$item.ITEM_CODE",
+                quantity: { $sum: "$item.QUANTITY" },
+                total_amount: { $sum: "$item.TOTAL_PRICE" }
+            }
+        },
+    ]);
+
+    // Tính tổng tất cả 4 tháng
+    const total = listItem.reduce((sum, m) => sum + m.total_amount, 0);
+    const quantity = listItem.reduce((sum, m) => sum + m.quantity, 0);
+    console.log(listItem)
+    return {
+        listItem,
+        total,
+        quantity
+    };
+}
+
 
 const cancelOrder = async (invoiceCode, user) => {
     try {
@@ -1883,5 +1977,6 @@ module.exports = {
     statisticInvoiceBasedOnStatus,
     statisticsRevenueLast7Days,
     statisticsRevenueLast4Weeks,
-    statisticsRevenueLast4Months
+    statisticsRevenueLast4Months,
+    statisticsSalesItem
 }
