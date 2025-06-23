@@ -41,9 +41,8 @@ app.use(session({
   saveUninitialized: false,  // Lưu session ngay cả khi chưa có dữ liệu
   cookie: { 
     secure: false, // Để true nếu dùng HTTPS
-    maxAge: 24 * 60 * 60 * 60 * 1000
+    maxAge: 30 * 24 * 60 * 60 * 1000
    } 
-  
 }))
 
 app.use('/api/auth', authRoute);
