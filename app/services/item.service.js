@@ -354,7 +354,8 @@ const generateItemCode = async (itemType) => {
 };
 
 const createItem = async (itemData) => {
-    const {
+
+    let {
         itemName,
         itemType,
         itemNameEn,
@@ -396,6 +397,19 @@ const createItem = async (itemData) => {
     if (existingItem) {
         return { error: "Item already exists" };
     }
+    //let unitInvoiceID = unitInvoiceId;
+    if(unitInvoiceId == "" || unitInvoiceId == null || unitInvoiceId == undefined){
+        unitInvoiceId = null;
+    }
+
+    if(price  == null || price == undefined){
+        price = 0;
+    }
+
+    if(description == null || description == undefined){
+        description = null;
+    }
+    
 
     const newItemData = {
         ITEM_CODE: newItemCode,

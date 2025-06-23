@@ -11,6 +11,11 @@ router.put('/removing-items/:invoiceCode', authenticateToken, checkRoleMiddlewar
 router.put('/cancelling-order/:invoiceCode', authenticateToken, salesInvoiceController.cancelOrder)
 router.get('/', authenticateToken, salesInvoiceController.getAllInvoices)
 router.get('/statistic-based-on-status', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticInvoiceBasedOnStatus)
+router.get('/statistic-revenue-last-seven-days', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticsRevenueLast7Days);
+router.get('/statistic-revenue-last-four-weeks', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticsRevenueLast4Weeks);
+router.get('/statistic-revenue-last-four-months', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.statisticsRevenueLast4Months);
+
+router.get('/:invoiceCode', authenticateToken, salesInvoiceController.getInvoiceByCode)
 router.get('/:invoiceCode', authenticateToken, salesInvoiceController.getInvoiceByCode)
 router.delete('/:invoiceCode', authenticateToken, checkRoleMiddleware(['admin', 'manager', 'staff']), salesInvoiceController.deleteInvoice)
 
