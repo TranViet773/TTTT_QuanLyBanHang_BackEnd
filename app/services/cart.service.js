@@ -33,6 +33,7 @@ const addItemToCart = async (session, itemCode, quantity) =>{
             ITEM_PRICE:  validPrice.PRICE_AMOUNT,
             ITEM_TYPE_NAME: item_type.ITEM_TYPE_NAME,
             ITEM_UNIT: existingItem.UNIT,
+            PRODUCT_VOUCHER_ID: maxDiscount?.maxDiscountVoucher?._id,
             VOUCHER_CODE: maxDiscount?.maxDiscountVoucher?.VOUCHER_CODE,
             VOUCHER_VALUE: maxDiscount?.maxDiscountVoucher?.VALUE,
             VOUCHER_TYPE: maxDiscount?.maxDiscountVoucher?.TYPE,
@@ -201,6 +202,7 @@ const getCartByUser = async (session) => {
             if(item.ITEM_DISCOUNTED_PRICE != maxDiscount.priceAppliedVoucher) // cập nhật lại giá.
             {
                 item.ITEM_DISCOUNTED_PRICE = maxDiscount.priceAppliedVoucher;
+                item.PRODUCT_VOUCHER_ID = maxDiscount.maxDiscountVoucher._id;
                 item.VOUCHER_CODE = maxDiscount.maxDiscountVoucher.VOUCHER_CODE;
             }
         }
