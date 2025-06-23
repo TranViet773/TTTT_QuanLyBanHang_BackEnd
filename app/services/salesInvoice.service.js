@@ -1541,23 +1541,34 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     }
 }
 
-const statisticInvoiceBasedOnStatus = async () => {
+const statisticInvoiceBasedOnStatus = async (purchaseMethod) => {
     try {
-        const statistic = await SalesInvoice.aggregate([
-            {
-                $group: {
-                    _id: "$STATUS",
-                    count: { $sum: 1 }
+        // console.log(purchaseMethod)
+        const pipeline = []
+        if (purchaseMethod && purchaseMethod.trim()) {
+            pipeline.push({
+                $match: {
+                    PURCHASE_METHOD: purchaseMethod
                 }
-            },
-            {
-                $project: {
-                    status: "$_id",
-                    _id: 0,
-                    count: 1
-                }
+            })
+        }
+        pipeline.push({
+            $group: {
+                _id: "$STATUS",
+                count: { $sum: 1 }
             }
-        ])
+        })
+        pipeline.push({
+            $project: {
+                status: "$_id",
+                _id: 0,
+                count: 1
+            }
+        })
+
+        console.log(JSON.stringify(pipeline))
+
+        const statistic = await SalesInvoice.aggregate([pipeline])
         return statistic
     } catch (error) {
         console.log(error)

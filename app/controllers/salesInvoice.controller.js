@@ -191,7 +191,8 @@ const deleteInvoice = async (req, res) => {
 
 const statisticInvoiceBasedOnStatus = async (req, res) => {
     try {
-        const response = await salesInvoiceService.statisticInvoiceBasedOnStatus()
+        // console.log(req.query.purchaseMethod)
+        const response = await salesInvoiceService.statisticInvoiceBasedOnStatus(req.query.purchaseMethod)
         return res.status(200).json({
             success: true,
             message: "Thống kê số lượng hóa đơn bán hàng theo trạng thái.",
