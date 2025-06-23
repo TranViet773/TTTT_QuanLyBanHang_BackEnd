@@ -1,4 +1,5 @@
 const purchaseInvoiceService = require('../services/purchaseInvoice.service')
+const invoiceHelper = require('../helpers/invoice.helper')
 
 const getAllInvoices = async (req, res) => {
     try {
@@ -62,7 +63,7 @@ const getInvoiceByCode = async (req, res) => {
 
 const createInvoice = async (req, res) => {
     try {
-        const data = req.body
+        const data = invoiceHelper.standardizationData(req.body)
 
         data.importedBy = req.user.USER_ID
 
@@ -93,7 +94,7 @@ const createInvoice = async (req, res) => {
 const updateInvoice = async (req, res) => {
     try {
 
-        const data = req.body
+        const data = invoiceHelper.standardizationData(req.body)
 
         data.invoiceCode = req.params.invoiceCode
         data.userId = req.user.USER_ID
