@@ -159,6 +159,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             ...pipeline
         ])
 
+        // console.log(pipeline)
+
         if (invoice.IMPORTED_BY) {
             const user = await User.findById(invoice.IMPORTED_BY)
             const contact = authHelper.isValidInfo(user.LIST_CONTACT)
@@ -844,11 +846,255 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     }
 }
 
+const statisticsRevenueLast7Days = async () => {
+  const now = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6); // tính cả hôm nay là 7 ngày
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listday = await PurchaseInvoice.aggregate([
+    {
+      $match: {
+        "STATUS.STATUS_NAME": "PAYMENTED",
+        IMPORT_DATE: { $gte: sevenDaysAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$IMPORT_DATE" } },
+        total: "$TOTAL_AMOUNT"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          date: "$date",
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.date",
+        purchase_methods: {
+          $push: {
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        date: "$_id",
+        total: 1,
+        quantity: 1
+      }
+    },
+    { $sort: { date: 1 } }
+  ]);
+
+  // Tổng cộng tất cả 7 ngày
+  const total = listday.reduce((sum, item) => sum + item.total, 0);
+  const quantity = listday.reduce((sum, item) => sum + item.quantity, 0);
+
+  return {
+    listday,
+    total,
+    quantity
+  };
+};
+
+const statisticsRevenueLast4Weeks = async (dayInMonth = null) => {
+
+  // Nếu dayInMonth không được cung cấp, sử dụng ngày hiện tại
+  let now = new Date();
+  let fourWeeksAgo = new Date();
+  if(dayInMonth !== null) {
+    const inputDate = new Date(dayInMonth);
+    console.log(inputDate);
+    // Ngày bắt đầu tháng
+    fourWeeksAgo = new Date(inputDate.getFullYear(), inputDate.getMonth(), 1);
+    fourWeeksAgo.setHours(0, 0, 0, 0);
+
+    // Ngày kết thúc tháng
+    now = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 0);
+    now.setHours(23, 59, 59, 999);
+    console.log(fourWeeksAgo, now);
+  }else{
+    now = new Date();
+    fourWeeksAgo = new Date();
+  }
+
+  fourWeeksAgo.setDate(now.getDate() - 28);
+  fourWeeksAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listweek = await PurchaseInvoice.aggregate([
+    {
+      $match: {
+        "STATUS.STATUS_NAME": "PAYMENTED",
+        IMPORT_DATE: { $gte: fourWeeksAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        week: { $isoWeek: "$IMPORT_DATE" },
+        year: { $isoWeekYear: "$IMPORT_DATE" },
+        total: "$TOTAL_AMOUNT",
+      }
+    },
+    {
+      $group: {
+        _id: {
+          week: "$week",
+          year: "$year",
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          week: "$_id.week",
+          year: "$_id.year"
+        },
+        purchase_methods: {
+          $push: {
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        week: {
+          $concat: [
+            "Tuần ",
+            { $toString: "$_id.week" },
+            " - ",
+            { $toString: "$_id.year" }
+          ]
+        },
+        // purchase_methods: 1,
+        total: 1,
+        quantity: 1
+      }
+    },
+    {
+      $sort: { week: 1 }
+    }
+  ]);
+
+  // ✅ Tổng kết
+  const total = listweek.reduce((sum, w) => sum + w.total, 0);
+  const quantity = listweek.reduce((sum, w) => sum + w.quantity, 0);
+
+  return {
+    listweek,
+    total,
+    quantity
+  };
+};
+
+
+const statisticsRevenueLast4Months = async () => {
+  const now = new Date();
+  const fourMonthsAgo = new Date();
+  fourMonthsAgo.setMonth(now.getMonth() - 4);
+  fourMonthsAgo.setDate(1);
+  fourMonthsAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listmonth = await PurchaseInvoice.aggregate([
+    {
+      $match: {
+        "STATUS.STATUS_NAME": "PAYMENTED",
+        IMPORT_DATE: { $gte: fourMonthsAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        month: { $month: "$IMPORT_DATE" },
+        year: { $year: "$IMPORT_DATE" },
+        total: "$TOTAL_AMOUNT",
+      }
+    },
+    {
+      $group: {
+        _id: {
+          month: "$month",
+          year: "$year",
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          month: "$_id.month",
+          year: "$_id.year"
+        },
+        purchase_methods: {
+          $push: {
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        month: {
+          $concat: [
+            "Tháng ",
+            { $cond: [{ $lt: ["$_id.month", 10] }, { $concat: ["0", { $toString: "$_id.month" }] }, { $toString: "$_id.month" }] },
+            " - ",
+            { $toString: "$_id.year" }
+          ]
+        },
+        total: 1,
+        quantity: 1
+      }
+    },
+    {
+      $sort: { month: 1 }
+    }
+  ]);
+
+  // Tính tổng tất cả 4 tháng
+  const total = listmonth.reduce((sum, m) => sum + m.total, 0);
+  const quantity = listmonth.reduce((sum, m) => sum + m.quantity, 0);
+
+  return {
+    listmonth,
+    total,
+    quantity
+  };
+};
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
     deleteInvoice,
-    deleteItems
+    deleteItems,
+    statisticsRevenueLast4Months,
+    statisticsRevenueLast4Weeks,
+    statisticsRevenueLast7Days
 }
