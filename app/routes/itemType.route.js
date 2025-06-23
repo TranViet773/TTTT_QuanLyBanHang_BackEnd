@@ -6,8 +6,8 @@ const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.
 router.get('/', itemTypeController.getAllItemTypes);
 router.get('/name/', itemTypeController.getItemTypeByName);
 router.get('/:id', itemTypeController.getItemTypeById);
-router.post('/', authenticateToken, itemTypeController.createItemType);
-router.put('/:id', authenticateToken, itemTypeController.updateItemType);
-router.delete('/:id', authenticateToken, itemTypeController.deleteItemType);
+router.post('/', authenticateToken, checkRoleMiddleware(['admin', 'manager']), itemTypeController.createItemType);
+router.put('/:id', authenticateToken, checkRoleMiddleware(['admin', 'manager']), itemTypeController.updateItemType);
+router.delete('/:id', authenticateToken, checkRoleMiddleware(['admin', 'manager']), itemTypeController.deleteItemType);
 
 module.exports = router;
