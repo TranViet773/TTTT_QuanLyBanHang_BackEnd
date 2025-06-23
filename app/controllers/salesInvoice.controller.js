@@ -57,7 +57,6 @@ const getInvoiceByCode = async (req, res) => {
     }
 }
 
-
 const createInvoice = async (req, res) => {
     try {
         const data = req.body
