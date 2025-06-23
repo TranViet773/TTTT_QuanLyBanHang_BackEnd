@@ -18,7 +18,16 @@ const getItemTypeById = async (id) => {
 }
 const getItemTypeByName = async (name) => {
     try {
-        const itemType = await ItemTypeModel.findOne({ ITEM_TYPE_NAME: name });
+        const itemType = await ItemTypeModel.aggregate([
+            {
+                $match: {
+                    $or: [
+                        { ITEM_TYPE_NAME: { $regex: name, $options: 'i' } },
+                        { ITEM_TYPE_NAME_EN: { $regex: name, $options: 'i' } }
+                    ]
+                }
+            }
+        ]);
         return itemType;     
     } catch (error) {
         return { error: 'Error fetching item type by name: ' + error.message };

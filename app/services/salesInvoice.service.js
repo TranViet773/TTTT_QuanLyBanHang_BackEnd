@@ -1762,7 +1762,7 @@ const statisticsRevenueLast4Weeks = async (dayInMonth = null) => {
 const statisticsRevenueLast4Months = async () => {
   const now = new Date();
   const fourMonthsAgo = new Date();
-  fourMonthsAgo.setMonth(now.getMonth() - 3);
+  fourMonthsAgo.setMonth(now.getMonth() - 4);
   fourMonthsAgo.setDate(1);
   fourMonthsAgo.setHours(0, 0, 0, 0);
   now.setHours(23, 59, 59, 999);
