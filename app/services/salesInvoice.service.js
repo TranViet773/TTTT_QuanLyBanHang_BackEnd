@@ -1898,6 +1898,7 @@ const statisticsSalesItem = async(query) => {
                 total_amount: { $sum: "$item.TOTAL_PRICE" }
             }
         },
+        
     ]
 
     console.log(pipeline)
@@ -1923,6 +1924,30 @@ const statisticsSalesItem = async(query) => {
                 total_amount: { $sum: "$item.TOTAL_PRICE" }
             }
         },
+        {
+            $lookup: {
+                from: 'items',
+                localField: '_id',
+                foreignField: 'ITEM_CODE',
+                as: 'item'
+            }
+        },
+        {
+            $unwind: {
+                path: '$item',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                ITEM_CODE: '$item.ITEM_CODE',
+                ITEM_NAME: '$item.ITEM_NAME',
+                AVATAR_IMAGE_URL: '$item.AVATAR_IMAGE_URL',
+                quantity: 1,
+                total_amount: 1,
+                _id: 0
+            }
+        }
     ]);
 
     // Tính tổng tất cả 4 tháng
