@@ -833,6 +833,13 @@ const updateInvoiceItems = async (items, originalItems) => {
                     return {error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`}
                 }
 
+                 // Kiểm tra số lượng tồn kho của item
+                if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
+                    return ({
+                        error: `Số lượng tồn kho của ${item.ITEM_NAME} không đủ hoặc đã hết hàng.`
+                    })
+                } 
+
                 // thêm trường giá bán vào item trong hóa đơn
                 const price = authHelper.isValidInfo(item.PRICE)
                 addItem.UNIT = price.UNIT
@@ -1147,7 +1154,7 @@ const updateInvoiceStatus = async (invoice, status) => {
     if (invoice.STATUS === 'PAYMENTED' || invoice.STATUS === 'CANCELLED') {
         return ({error: "Hóa đơn đã đạt trạng thái cuối."})
     }  
-    if (invoice.STATUS === 'CONFIRMED' && invoice.STATUS !== 'PAYMENTED') {
+    if (invoice.STATUS === 'CONFIRMED' && status !== 'PAYMENTED') {
         return ({ error: `Không thể chuyển sang trạng thái ${status} cho hóa đơn đã được xác nhận.` })
     }
 
