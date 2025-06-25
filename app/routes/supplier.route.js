@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplier.controller');
 const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.middleware');
-const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.middleware');
 
 // Chỉ cần đăng nhập là dùng được
 router.post('/', authenticateToken,checkRoleMiddleware(["admin", "manager", "staff"]), supplierController.create);
