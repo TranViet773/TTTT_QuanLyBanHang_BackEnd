@@ -756,7 +756,7 @@ const deleteItems = async (data) => {
     
     try {
         
-        const invoice = await PurcharseInvoice.findOne({INVOICE_CODE: invoiceCode})
+        const invoice = await PurchaseInvoice.findOne({INVOICE_CODE: invoiceCode})
 
         if (!invoice) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}`}
