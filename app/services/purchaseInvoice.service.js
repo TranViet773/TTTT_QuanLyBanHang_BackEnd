@@ -713,7 +713,7 @@ const updateInvoice = async (data) => {
         }
 
         if (statusName && statusName.trim()) {
-            if (statusName !== 'DRAFT') {
+            if (statusName !== 'DRAFT' && statusName !== lastStatus.STATUS_NAME) {
                 lastStatus.THRU_DATE = now
                 // console.log("Last status:", lastStatus)
 
