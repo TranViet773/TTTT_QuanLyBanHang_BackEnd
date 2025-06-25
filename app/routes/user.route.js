@@ -4,8 +4,8 @@ const { updateUser, getUsers, updateRoleForUser, getUserById } = require("../con
 const { authenticateToken, checkRoleMiddleware } = require('../middlewares/auth.middleware');
 
 router.put ('/profile', authenticateToken, updateUser );
-router.get('/', authenticateToken, getUsers);
+router.get("/", authenticateToken, checkRoleMiddleware(["admin"]), getUsers);
 router.put('/role/:userId', authenticateToken, checkRoleMiddleware(['admin']), updateRoleForUser);
-router.get('/:userId', authenticateToken, getUserById);
+router.get('/:userId', authenticateToken, checkRoleMiddleware(["admin"]), getUserById);
 
 module.exports = router;
