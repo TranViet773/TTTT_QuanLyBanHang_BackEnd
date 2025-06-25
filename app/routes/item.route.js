@@ -6,7 +6,7 @@ const authenticateMiddleware = require('../middlewares/auth.middleware');
 
 router.get('/', itemController.getAllItems);
 router.get('/:code', itemController.getItemByCode);
-router.post('/', authenticateMiddleware.authenticateToken, authenticateMiddleware.checkRoleMiddleware(['admin', 'manager']), itemController.createItem);
+router.post('/', authenticateMiddleware.authenticateToken, authenticateMiddleware.checkRoleMiddleware(['admin', 'manager', 'staff']), itemController.createItem);
 router.get('/item-type/:id', itemController.getAllByItemTypeId);
 router.put('/:id', authenticateMiddleware.authenticateToken, authenticateMiddleware.checkRoleMiddleware(['admin', 'manager']), itemController.updateItem);
 router.delete('/:id', authenticateMiddleware.authenticateToken, authenticateMiddleware.checkRoleMiddleware(['admin', 'manager']), itemController.deleteItem);
