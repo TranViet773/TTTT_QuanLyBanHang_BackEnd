@@ -6,7 +6,7 @@ const isVoucherAvailable = (voucher) => {
   if (!voucher) {
     return {
       available: false,
-      error: "Voucher không tồn tại hoặc đã hết hạn",
+      error: `Voucher không tồn tại hoặc đã hết hạn`,
     };
   }
   // kiem tra ngày bắt đầu và kết thúc của voucher
@@ -14,19 +14,19 @@ const isVoucherAvailable = (voucher) => {
   if (currentDate < voucher.START_DATE) {
     return {
       available: false,
-      error: "Voucher chưa bắt đầu sử dụng",
+      error: `Voucher ${voucher.VOUCHER_CODE} chưa bắt đầu sử dụng`,
     };
   }
   if (currentDate > voucher.END_DATE) {
     return {
       available: false,
-      error: "Voucher đã hết hạn",
+      error: `Voucher ${voucher.VOUCHER_CODE} đã hết hạn`,
     };
   }
   if (voucher.NUMBER_USING >= voucher.QUANTITY) {
     return {
       available: false,
-      error: "Voucher đã sử dụng hết",
+      error: `Voucher ${voucher.VOUCHER_CODE} đã sử dụng hết`,
     };
   }
   return {
@@ -328,6 +328,7 @@ const getAllVouchers = async ({
     return { error: "Error fetching vouchers" };
   }
 };
+
 const getVoucherById = async (voucherCode) => {
   try {
     const voucher = await Voucher.findOne({ VOUCHER_CODE: voucherCode })
@@ -574,8 +575,7 @@ const addItemsForVoucher = async (voucherCode, itemIds) => {
     if (
       voucher.IS_ACTIVE == false ||
       voucher.QUANTITY - voucher.NUMBER_USING <= 0 ||
-      voucher.END_DATE < currentDate ||
-      voucher.START_DATE > currentDate
+      voucher.END_DATE < currentDate
     )
       return { error: "Voucher không còn hợp lệ!" };
 

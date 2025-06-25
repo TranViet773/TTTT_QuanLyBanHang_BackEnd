@@ -2,6 +2,7 @@ const voucherService = require("../services/voucher.service");
 const Voucher = require("../models/Vouchers.model");
 const User = require("../models/User.model");
 const { json } = require("express");
+
 const createVoucher = async (req, res) => {
   try {
     const data = req.body;
@@ -219,6 +220,7 @@ const restoreVoucher = async (req, res) => {
     });
   }
 };
+
 const getTotalVoucher = async (req, res) => {
   try {
     const result = await voucherService.getTotalVoucher();

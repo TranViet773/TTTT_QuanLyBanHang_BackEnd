@@ -33,10 +33,36 @@ const rollbackItems = async (count, originalItems, backupItems) => {
             
             await originalItems[i].save()
         }
+
+        if (originalItems.PRICE.length !== backupItems.PRICE.length) {
+            originalItems.PRICE.splice(length-1, 1)
+            originalItems.PRICE[length-1].THRU_DATE = backupItems.PRICE[length-1].THRU_DATE    
+        }
     }
+}
+
+const isValidStatus = (listStatus) => {
+    const now = new Date()
+    // tạo bản sao và đảo ngược mảng trước khi duyệt
+    return listStatus.slice().reverse().find(status =>
+        status.FROM_DATE <= now &&
+        (status.THRU_DATE === null || status.THRU_DATE > now)
+    )
+};
+
+const standardizationData = (data) => {
+    const standardizationValue = {
+        ...data,
+        tax: Number.parseInt(data.tax) || null,
+        extraFee: Number.parseInt(data.extraFee) || null,
+    }
+    
+    return standardizationValue
 }
 
 module.exports = {
     getItemDocument,
-    rollbackItems
+    rollbackItems,
+    isValidStatus,
+    standardizationData
 }

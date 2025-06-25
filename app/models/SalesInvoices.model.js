@@ -7,6 +7,11 @@ const salesInvoices = new mongoose.Schema({
         unique: true,
     },
 
+    CREATED_BY_USER: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+
     CUSTOMER_ID: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -24,6 +29,43 @@ const salesInvoices = new mongoose.Schema({
     STATUS: {
         type: String,
         enum: ['DRAFT', 'CONFIRMED', 'CANCELLED', 'PAYMENTED'],
+    },
+
+    DELIVERY_INFORMATION: {
+        type: new mongoose.Schema({
+            NAME: {
+                type: String
+            },
+            ADDRESS: {
+                type: new mongoose.Schema({
+                    COUNTRY: {
+                        type: String,
+                    },
+                    CITY: {
+                        type: String,
+                    },
+                    DISTRICT: {
+                        type: String,
+                    },
+                    WARD: {
+                        type: String,
+                    },
+                    DETAIL: {
+                        type: String
+                    },
+                }),
+                _id: false,
+            },
+            PHONE_NUMBER: {
+                type: String,
+                match: [/^\+?[0-9\s]+$/, 'Chỉ được chứa ký tự số']
+            },
+            EMAIL: {
+                type: String,
+                match: [/^\S+@\S+\.\S+$/, 'Email không hợp lệ']
+            }
+        }),
+        _id: false
     },
 
     NOTE: {

@@ -4,7 +4,7 @@ require('dotenv').config()
 
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-
+const session = require('express-session');
 
 
 const app = express();
@@ -22,7 +22,7 @@ const accountRoute = require('./app/routes/account.route');
 const purchaseInvoiceRoute = require('./app/routes/purchaseInvoice.route');
 const salesInvoiceRoute = require('./app/routes/salesInvoice.route');
 const voucherRoute = require("./app/routes/voucher.route");
-
+const cartRoute = require('./app/routes/cart.route');
 
 
 app.use(cors({
@@ -34,6 +34,16 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true })); // Xử lý x-www-form-urlencoded nếu có
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false, // Không lưu session nếu không được sửa đổi
+  saveUninitialized: false,  // Lưu session ngay cả khi chưa có dữ liệu
+  cookie: { 
+    secure: false, // Để true nếu dùng HTTPS
+    maxAge: 30 * 24 * 60 * 60 * 1000
+   } 
+}))
 
 app.use('/api/auth', authRoute);
 app.use('/api/user', userRoute);
@@ -48,7 +58,7 @@ app.use('/api/sales-invoices', salesInvoiceRoute)
 app.use('/api/unit-invoices', unitInvoiceRoute);
 app.use('/api/account', accountRoute);
 app.use('/api/vouchers', voucherRoute);
-
+app.use('/api/carts', cartRoute);
 
 app.get('/', (request, respond) => {
   respond.status(200).json({
@@ -59,5 +69,6 @@ app.listen(port, (request, respond) => {
   console.log(`Our server is live on ${port}. Yay!`);
 });
 
-const connectDB = require('./app/configs/db.config')
+const connectDB = require('./app/configs/db.config');
+// const session = require('express-session');
 connectDB()

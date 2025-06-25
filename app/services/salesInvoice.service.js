@@ -6,7 +6,9 @@ const Voucher = require('../models/Vouchers.model')
 const voucherService = require('../services/voucher.service')
 const authHelper = require('../helpers/auth.helper')
 const invoiceHelper = require('../helpers/invoice.helper')
+const { ObjectId } = require('mongodb')
 const _ = require('lodash')
+
 
 
 const handleInvoiceDataForResponse = async (invoice) => {
@@ -68,8 +70,10 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                                 ITEM_DETAIL: {
                                                     ITEM_NAME: "$$matchedItem.ITEM_NAME",
                                                     ITEM_NAME_EN: '$$matchedItem.ITEM_NAME_EN',
-                                                    AVATAR_IMG_URL: '$$matchedItem.AVATAR_IMG_URL',
-                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE'
+                                                    AVATAR_IMAGE_URL: '$$matchedItem.AVATAR_IMAGE_URL',
+                                                    ITEM_TYPE: '$$matchedItem.ITEM_TYPE',
+                                                    IS_ACTIVE: '$$matchedItem.IS_ACTIVE',
+                                                    LIST_VOUCHER_ACTIVE: '$$matchedItem.LIST_VOUCHER_ACTIVE',
                                                 }
                                             }
                                         }                                        
@@ -118,6 +122,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                                             },
                                             in: {
                                                 VOUCHER: {
+                                                    _id: '$$matchedVoucher._id',
                                                     VOUCHER_CODE: '$$matchedVoucher.VOUCHER_CODE',
                                                     TYPE: '$$matchedVoucher.TYPE',
                                                     VALUE: '$$matchedVoucher.VALUE',
@@ -144,6 +149,14 @@ const handleInvoiceDataForResponse = async (invoice) => {
             },
             {
                 $lookup: {
+                    from: 'item_types',
+                    localField: 'ITEMS.ITEM_DETAIL.ITEM_TYPE',
+                    foreignField: '_id',
+                    as: 'LIST_ITEM_TYPE'
+                }
+            },
+            {
+                $lookup: {
                     from: 'accounts',
                     localField: 'CUSTOMER_ID',
                     foreignField: 'USER_ID',
@@ -154,6 +167,22 @@ const handleInvoiceDataForResponse = async (invoice) => {
             {
                 $unwind: {
                     path: '$CUSTOMER',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
+
+            {
+                $lookup: {
+                    from: 'accounts',
+                    localField: 'CREATED_BY_USER',
+                    foreignField: 'USER_ID',
+                    as: 'CREATED_BY'
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CREATED_BY',
                     preserveNullAndEmptyArrays: true,
                 }
             },
@@ -198,14 +227,17 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 $project: {
                     _id: 0,
                     INVOICE_CODE: '$INVOICE_CODE',
+                    CREATED_BY: '$CREATED_BY.USERNAME',
                     CUSTOMER: '$CUSTOMER.USERNAME',
                     SELL_DATE: '$SELL_DATE',
                     SOLD_BY: '$STAFF.USERNAME',
                     STATUS: '$STATUS',
+                    DELIVERY_INFORMATION: '$DELIVERY_INFORMATION',
                     NOTE: '$NOTE',
                     ITEMS: '$ITEMS',
                     TOTAL_AMOUNT: '$TOTAL_AMOUNT',
                     GLOBAL_VOUCHER: {
+                        _id: '$VOUCHER._id',
                         VOUCHER_CODE: '$VOUCHER.VOUCHER_CODE',
                         TYPE: '$VOUCHER.TYPE',
                         VALUE: '$VOUCHER.VALUE',
@@ -221,6 +253,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
                     CREATED_AT: '$CREATED_AT',
                     UPDATED_AT: '$UPDATED_AT',
                     LIST_VOUCHER_ACTIVE: '$LIST_VOUCHER_ACTIVE',
+                    LIST_ITEM_TYPE: '$LIST_ITEM_TYPE',
                 }
             }
         ]
@@ -235,6 +268,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
         ])
 
         const listVoucher = response[0].LIST_VOUCHER_ACTIVE
+        const listItemType = response[0].LIST_ITEM_TYPE
+
         if(listVoucher){
             for (let i = 0; i < response[0].ITEMS.length; i++) {
                 const item = response[0].ITEMS[i]
@@ -264,12 +299,26 @@ const handleInvoiceDataForResponse = async (invoice) => {
                         }
                     }
                 }
+
+                const itemType = detail.ITEM_TYPE
+                for (const type of listItemType) {
+                    if (detail.ITEM_TYPE.equals(type._id)) {
+                        detail.ITEM_TYPE_NAME = type.ITEM_TYPE_NAME
+                    }
+                }
+
+                for(const key of Object.keys(detail)) {
+                    item[key] = detail[key]
+                }
+
+                delete item.ITEM_DETAIL
             }
         }
         else console.log("null")    
         
 
         delete response[0].LIST_VOUCHER_ACTIVE
+        delete response[0].LIST_ITEM_TYPE
 
         if (invoice.CUSTOMER_ID) {
             const user = await User.findById(invoice.CUSTOMER_ID)
@@ -280,6 +329,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
             }
 
             response[0].CUSTOMER_CONTACT = {
+                _id: invoice.CUSTOMER_ID,
+                USERNAME: response[0].CUSTOMER,
                 NAME: contact.FULL_NAME,
                 PHONE_NUMBER: contact.PHONE_NUMBER,
                 ADDRESS_1: contact.ADDRESS_1,
@@ -291,6 +342,8 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 STATE: contact.STATE,
                 COUNTRY: contact.COUNTRY,
             }
+
+            delete response[0].CUSTOMER
         }
 
         if (invoice.SOLD_BY) {
@@ -302,6 +355,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
             }
 
             response[0].STAFF_CONTACT = {
+                _id: invoice.SOLD_BY,
                 NAME: contact.FULL_NAME,
                 PHONE_NUMBER: contact.PHONE_NUMBER,
                 ADDRESS_1: contact.ADDRESS_1,
@@ -312,6 +366,12 @@ const handleInvoiceDataForResponse = async (invoice) => {
                 CITY: contact.CITY,
                 STATE: contact.STATE,
                 COUNTRY: contact.COUNTRY,
+                ROLE: {
+                    IS_ADMIN: user.ROLE.IS_ADMIN,
+                    IS_MANAGER: user.ROLE.IS_MANAGER,
+                    IS_SERVICE_STAFF: user.ROLE.IS_SERVICE_STAFF,
+                    IS_CUSTOMER: user.ROLE.IS_CUSTOMER
+                }
             }
         }
 
@@ -323,10 +383,11 @@ const handleInvoiceDataForResponse = async (invoice) => {
     }
 }
 
-const getAllInvoices = async (query) => {
+const getAllInvoices = async (query, user) => {
     try {
 
-        const {page, limits, search, minPrice, maxPrice, fromDate, toDate} = query
+        const {page, limits, search, status, buyer, seller, invoiceCode,
+                minPrice, maxPrice, fromDate, toDate, purchaseMethod} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -335,6 +396,7 @@ const getAllInvoices = async (query) => {
         const skip = page < 2 ? 0 : (pageNumber - 1) * limitNumber;
 
         const matchConditions = []
+        const now = new Date()
 
         // tạo pipeline join bảng
         const pipeline = [        
@@ -357,6 +419,22 @@ const getAllInvoices = async (query) => {
             {
                 $lookup: {
                     from: 'accounts',
+                    localField: 'CREATED_BY_USER',
+                    foreignField: 'USER_ID',
+                    as: 'CREATED_BY'
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CREATED_BY',
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+
+            {
+                $lookup: {
+                    from: 'accounts',
                     localField: 'CUSTOMER_ID',
                     foreignField: 'USER_ID',
                     as: 'CUSTOMER'
@@ -368,18 +446,63 @@ const getAllInvoices = async (query) => {
                     path: '$CUSTOMER',
                     preserveNullAndEmptyArrays: true
                 }
-            }
+            },
+
+            {             
+                $lookup: {
+                    from: "users",
+                    let: { 
+                        userId: "$CUSTOMER_ID",
+                        now: now,
+                     },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$_id", "$$userId"] },
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: "CUSTOMER_INFO"
+                }
+            },
+
+            {
+                $unwind: {
+                    path: '$CUSTOMER_INFO',
+                    preserveNullAndEmptyArrays: true,
+                }
+            },
         ]
 
         if (search?.trim()) {
             console.log(search)
-            matchConditions.push({
+            if (seller?.trim() && seller === true) {
+                matchConditions.push({ 'STAFF.USERNAME': { $regex: seller, $options: 'i' } },)
+            }
+
+            else if (buyer?.trim() && buyer === true) {
+                matchConditions.push({ 'CUSTOMER.USERNAME': { $regex: buyer, $options: 'i' } },)
+            }
+
+            else if (invoiceCode?.trim() && invoiceCode === true) {
+                matchConditions.push({ INVOICE_CODE: { $regex: search, $options: 'i' } })
+            }
+
+            else matchConditions.push({
                 $or: [
                     { INVOICE_CODE: { $regex: search, $options: 'i' } },
                     { 'STAFF.USERNAME': { $regex: search, $options: 'i' } },
                     { 'CUSTOMER.USERNAME' : { $regex: search, $options: 'i' } }
                 ]
             })
+        }
+
+        if (status?.trim()) {
+            matchConditions.push({ STATUS: { $regex: status, $options: 'i' }})
         }
 
         if (fromDate?.trim()) {
@@ -446,9 +569,19 @@ const getAllInvoices = async (query) => {
             }
         }
 
+        if (purchaseMethod?.trim()) {
+            matchConditions.push({ PURCHASE_METHOD: { $regex: purchaseMethod, $options: 'i' }})
+        }
+
+        if (user.IS_CUSTOMER) {
+            matchConditions.push({
+                CREATED_BY_USER: new ObjectId(user.USER_ID)
+            })
+        }
+
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
-            console.log(matchConditions)
+            // console.log(matchConditions)
         }
 
         // tạo pipeline để đếm tổng số bản ghi
@@ -460,18 +593,24 @@ const getAllInvoices = async (query) => {
             $project: {
                 _id: 0,
                 INVOICE_CODE: "$INVOICE_CODE",
-                CUSTOMER: "$CUSTOMER.USERNAME",
+                CREATED_BY_USER: "$CREATED_BY.USERNAME",
+                CUSTOMER: {
+                    USERNAME: "$CUSTOMER.USERNAME",
+                    // EMAIL: "$CUSTOMER"
+                },
                 SELL_DATE: "$SELL_DATE",
                 SOLD_BY: "$STAFF.USERNAME",
                 STATUS: "$STATUS",
                 TOTAL_WITH_TAX_EXTRA_FEE: "$TOTAL_WITH_TAX_EXTRA_FEE",
                 PAYMENT_METHOD: "$PAYMENT_METHOD",
-                PURCHASE_METHOD: "$PURCHASE_METHOD"
+                PURCHASE_METHOD: "$PURCHASE_METHOD",
+                CUSTOMER_INFO: "$CUSTOMER_INFO",
+                // CONTACT_INFO: "$CONTACT_INFO"
             }
         })
         pipeline.push({ $sort: { SELL_DATE: -1 } })
         pipeline.push({ $skip: skip })
-        pipeline.push({ $limit: limitNumber })
+        pipeline.push({ $limit: limitNumber > 50 ? 50 : limitNumber })
 
         console.log(JSON.stringify(pipeline, null, 2));
 
@@ -481,6 +620,25 @@ const getAllInvoices = async (query) => {
         ])
         // tổng số bản ghi
         const total = totalResult[0] ?. total || null
+
+        // Lấy ra thông tin cơ bản của khách hàng
+        for (let i=0; i < results.length; i++) {
+            if (!results[i].CUSTOMER_INFO) {
+                continue
+            }
+
+           
+            const info = results[i].CUSTOMER_INFO
+            const listContact = info.LIST_CONTACT            
+            console.log(listContact)
+            const contact = authHelper.isValidInfo(listContact)
+
+            results[i].CUSTOMER.FULL_NAME = contact?.FULL_NAME
+            results[i].CUSTOMER.EMAIL = contact?.EMAIL
+            results[i].CUSTOMER.PHONE_NUMBER = contact?.PHONE_NUMBER
+            
+            delete results[i].CUSTOMER_INFO
+        }
 
         return {
             total,
@@ -497,10 +655,13 @@ const getAllInvoices = async (query) => {
     
 }
 
-const getInvoiceByCode = async (invoiceCode) => {
+const getInvoiceByCode = async (invoiceCode, user) => {
     try {
 
         const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
+        if (user?.IS_CUSTOMER && invoice.CUSTOMER_ID?.toString() !== user?.USER_ID) {
+            return {error: `Không tìm thấy hoặc không có quyền truy cập vào hóa đơn ${invoiceCode}`}
+        }
 
         return await handleInvoiceDataForResponse(invoice)
     } catch (error) {
@@ -532,6 +693,17 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                 addItem.UNIT_PRICE = price.PRICE_AMOUNT
                 addItem.TOTAL_PRICE = price.PRICE_AMOUNT * addItem.QUANTITY
                 addItem.SUPPLIER_ID = null
+
+                // Kiểm tra item is_active
+                if (!item.IS_ACTIVE) {
+                    await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+
+                    return ({
+                        // khi lỗi sẽ trả về tất cả dữ liệu (để thực hiện rollback) kèm error
+                        totalAmount, count, vouchers, backupVouchers, items,
+                        error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`
+                    })
+                }
 
                 // Kiểm tra số lượng tồn kho của item
                 if (item.ITEM_STOCKS.QUANTITY < addItem.QUANTITY) {
@@ -657,6 +829,10 @@ const updateInvoiceItems = async (items, originalItems) => {
 
             if(item.ITEM_CODE === addItem.ITEM_CODE) {
 
+                if (!item.IS_ACTIVE) {
+                    return {error: `Item ${item.ITEM_NAME} đã ngừng kinh doanh.`}
+                }
+
                 // thêm trường giá bán vào item trong hóa đơn
                 const price = authHelper.isValidInfo(item.PRICE)
                 addItem.UNIT = price.UNIT
@@ -735,10 +911,11 @@ const updateInvoiceItems = async (items, originalItems) => {
 }
 
 const createInvoice = async (data) => {
-    const {status, soldBy, customerId, note, items, voucherGlobalId, 
-            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod} = data
+    const {status, soldBy, customerId, createdBy, note, items, voucherGlobalId, 
+            tax, extraFee, extraFeeUnit, extraFeeNote, paymentMethod, purchaseMethod,
+            name, country, city, district, ward, detail, phoneNumber, email} = data
     
-    if (!status || !soldBy || !items || !paymentMethod || !purchaseMethod) {
+    if (!status || !items || !paymentMethod || !purchaseMethod) {
         return {error: "Vui lòng nhập đầy đủ thông tin cần thiết cho hóa đơn."}
     }
 
@@ -746,9 +923,20 @@ const createInvoice = async (data) => {
         return { error: `Status ${status} không hợp lệ.`}
     }
 
+    if (purchaseMethod === 'ONLINE' || purchaseMethod === 'DELIVERY' || purchaseMethod === 'PRE_ORDER') {
+        if (!name || !country || !city || !district || !ward || !phoneNumber) {
+            return { error: 'Vui lòng nhập đầy đủ thông tin đặt hàng.' }
+        }
+    }
+
     try {
-        if(!await Account.findOne({ USER_ID: soldBy })) {
-            return {error: "Người dùng không tồn tại."}
+
+        if(soldBy && !await Account.findOne({ USER_ID: soldBy })) {
+            return { error: "Nhân viên không tồn tại." }
+        }
+
+        if (customerId && !await Account.findOne({ USER_ID: customerId })) {
+            return { error: "Khách hàng không tồn tại." }
         }
         
         // lấy các document item tương ứng
@@ -774,7 +962,7 @@ const createInvoice = async (data) => {
 
 
         // tạo hóa đơn trực tiếp
-        if (status === 'CONFIRMED' || status === 'PAYMENTED') {
+        if (status === 'CONFIRMED' || status === 'PAYMENTED' || purchaseMethod === 'ONLINE') {
 
             // Update số lượng item
             const updatingData = await updateItemForExporting(items, originalItems, backupItems, now)
@@ -864,10 +1052,23 @@ const createInvoice = async (data) => {
 
         const invoiceData = {
             INVOICE_CODE: now.getTime(),
+            CREATED_BY_USER: createdBy,
             CUSTOMER_ID: customerId || null,
             SELL_DATE: now,
-            SOLD_BY: soldBy,
+            SOLD_BY: soldBy || null,
             STATUS: status,
+            DELIVERY_INFORMATION: {
+                NAME: name,
+                ADDRESS: {
+                    COUNTRY: country,
+                    CITY: city,
+                    DISTRICT: district,
+                    WARD: ward,
+                    DETAIL: detail,
+                },
+                PHONE_NUMBER: phoneNumber,
+                EMAIL: email,
+            },
             NOTE: note,
             ITEMS: items,
             TOTAL_AMOUNT: totalAmount,
@@ -919,7 +1120,6 @@ const checkValidVouchers = async (items) => {
             const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
             const isAvailable = voucherService.isVoucherAvailable(voucher)
             if (isAvailable?.error) {
-                item.PRODUCT_VOUCHER_ID = null
                 valid = false
             }
         }        
@@ -938,8 +1138,11 @@ const updateInvoiceStatus = async (invoice, status) => {
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
     }
-    if (status === 'DRAFT') {
-        return ({error: "Không thể cập nhật trạng thái DRAFT."})
+    if (invoice.STATUS === 'DRAFT' && status === 'DRAFT') {
+        return
+    }
+    if (invoice.STATUS !== 'DRAFT' && status === 'DRAFT') {
+        return ({error: `Không thể chuyển trạng thái hóa đơn ${invoice.STATUS} sang trạng thái DRAFT.`})
     }
     if (invoice.STATUS === 'PAYMENTED' || invoice.STATUS === 'CANCELLED') {
         return ({error: "Hóa đơn đã đạt trạng thái cuối."})
@@ -1000,12 +1203,106 @@ const updateInvoiceStatus = async (invoice, status) => {
     }
 }
 
+const rollbackDataForCancellingOrder = async (invoice) => {
+    const now = new Date()
+    const {originalItems, backupItems, error} = await (async () => {
+        try {
+            // const itemCodes = invoice.ITEMS.map(item => item.ITEM_CODE)
+            return invoiceHelper.getItemDocument(invoice.ITEMS)
+        } catch (error) {
+            console.log(error)
+            throw new Error(error.message)
+        }
+    })()
+
+    if (error) {
+        return {error: "Lỗi khi truy vấn dữ liệu items."}
+    }
+
+    let count = 0
+    const backupVouchers = []
+    const originalVouchers = []
+
+    try {
+        for (const origin of originalItems) {
+            for (const item of invoice.ITEMS) {
+                if (origin.ITEM_CODE === item.ITEM_CODE) {
+                    origin.ITEM_STOCKS.QUANTITY += item.QUANTITY
+                    origin.UPDATED_AT = now
+
+                    try {
+                        await origin.save()
+                        count++
+                    } catch (error) {
+                        throw new Error ("Lỗi xảy ra khi cập nhật số lượng items.")
+                    }
+
+                    if (item.PRODUCT_VOUCHER_ID) {
+                        const voucher = await Voucher.findById(item.PRODUCT_VOUCHER_ID)
+                        if (!voucher) {
+                            if (originalVouchers.length > 0) {
+                                await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+                            }
+                            await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                            return {error: `Không tìm thấy voucher ${item.PRODUCT_VOUCHER_ID}`}
+                        }
+                        
+                        backupVouchers.push({...voucher.toObject?.() || voucher})
+
+                        voucher.NUMBER_USING -= item.QUANTITY
+                        try {
+                            await voucher.save()
+                            originalVouchers.push(voucher)
+                        } catch (error) {
+                            console.log(error)
+                            throw new Error ("Lỗi khi cập nhật số lượng sử dụng vouchers.")
+                        }
+                    }
+
+                    break
+                }
+            }
+        }
+
+        if (invoice.VOUCHER_GLOBAL_ID) {
+            const voucher = await Voucher.findById(invoice.VOUCHER_GLOBAL_ID)
+
+            if (!voucher) {
+                if (originalVouchers.length > 0) {
+                    await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+                }
+                await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+                return {error: `Không tìm thấy voucher ${invoice.VOUCHER_GLOBAL_ID}`}
+            }
+
+            voucher.NUMBER_USING -= 1
+
+            try {
+                await voucher.save()
+            } catch (error) {
+                console.log(error)
+                throw new Error (`Lỗi khi cập nhật số lượng sử dụng voucher ${invoice.VOUCHER_GLOBAL_ID}`)
+            }
+        }
+
+    } catch (error) {
+        if (originalVouchers.length > 0) {
+            await voucherService.rollbackNumberUsing(originalVouchers, backupVouchers)
+        }
+        await invoiceHelper.rollbackItems(count, originalItems, backupItems)
+        
+        console.log(error)
+        throw new Error ("Lỗi xảy ra khi cập nhật dữ liệu.")
+    }
+}
+
 const updateInvoice = async (data) => {
 
     const {items, invoiceCode, status, globalVoucher, note, 
             extraFee, extraFeeNote, extraFeeUnit, paymentMethod, purchaseMethod, tax} = data
     const invoice = await SalesInvoice.findOne({ INVOICE_CODE: invoiceCode })
     const backupInvoice = _.cloneDeep(invoice.toObject())
+    const now = new Date()
 
     if(!invoice) {
         return ({error: "Không tìm thấy hóa đơn."})
@@ -1013,6 +1310,31 @@ const updateInvoice = async (data) => {
 
     if (invoice.STATUS !== 'DRAFT') {
         return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
+    }
+
+    if (status === 'CANCELLED') {
+        if (invoice.STATUS !== 'DRAFT') {
+            return {error: `Không thể cập nhật trạng thái CANCELLED cho hóa đơn ${invoice.STATUS}`}
+        }
+
+        if (invoice.PURCHASE_METHOD === 'ONLINE') {
+            const response = await rollbackDataForCancellingOrder(invoice)
+            if (response?.error) {
+                return response
+            }
+        }
+        
+        try {
+            invoice.STATUS = status
+            invoice.UPDATED_AT = now
+
+            await invoice.save()
+
+            return await handleInvoiceDataForResponse(invoice)
+        } catch (error) {
+            console.log (error)
+            throw new Error ('Lỗi xảy ra khi cập nhật hóa đơn.')
+        }
     }
 
     try {
@@ -1091,7 +1413,7 @@ const updateInvoice = async (data) => {
         // cập nhật lại phương thức mua hàng (nếu có)
         invoice.PURCHASE_METHOD = purchaseMethod ? purchaseMethod : invoice.PURCHASE_METHOD
 
-        invoice.UPDATED_AT = new Date()
+        invoice.UPDATED_AT = now
 
         await invoice.save()
 
@@ -1189,7 +1511,10 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
             if (invoice.STATUS !== 'DRAFT') {
                 return {error: `Không thể xóa hóa đơn ở trạng thái ${invoice.STATUS}.`}
             }
-
+            if (invoiceData.PURCHASE_METHOD === 'ONLINE' || invoiceData.PURCHASE_METHOD === 'PRE_ORDER') {
+                return { error: `Không thể xóa hóa đơn được mua bằng phương thức ${invoiceData.PURCHASE_METHOD}.` }
+            }
+            
             await SalesInvoice.findByIdAndDelete(invoice._id)
             return
         }
@@ -1198,6 +1523,11 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
         if (!invoiceData) {
             return {error: `Không tìm thấy hóa đơn ${invoiceCode}.`}
         }
+
+        if (invoiceData.PURCHASE_METHOD === 'ONLINE' || invoiceData.PURCHASE_METHOD === 'PRE_ORDER') {
+            return { error: `Không thể xóa hóa đơn được mua bằng phương thức ${invoiceData.PURCHASE_METHOD}.` }
+        }
+
         if (invoiceData.STATUS !== 'DRAFT') {
             return {error: `Không thể xóa hóa đơn ở trạng thái ${invoiceData.STATUS}.`}
         }
@@ -1211,11 +1541,467 @@ const deleteInvoice = async (invoiceCode=null, invoice=null) => {
     }
 }
 
+const statisticInvoiceBasedOnStatus = async (purchaseMethod) => {
+    try {
+        // console.log(purchaseMethod)
+        const pipeline = []
+        if (purchaseMethod && purchaseMethod.trim()) {
+            pipeline.push({
+                $match: {
+                    PURCHASE_METHOD: purchaseMethod
+                }
+            })
+        }
+        pipeline.push({
+            $group: {
+                _id: "$STATUS",
+                count: { $sum: 1 }
+            }
+        })
+        pipeline.push({
+            $project: {
+                status: "$_id",
+                _id: 0,
+                count: 1
+            }
+        })
+
+        console.log(JSON.stringify(pipeline))
+
+        const statistic = await SalesInvoice.aggregate([pipeline])
+        return statistic
+    } catch (error) {
+        console.log(error)
+        throw new Error('Lỗi xảy ra khi truy vấn dữ liệu hóa đơn.')
+    }
+}
+
+function getLast7Days(date = new Date()) {
+  const result = [];
+
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(date); 
+    day.setDate(day.getDate() - i); 
+    result.push(new Date(day));
+  }
+
+  return result.reverse(); // đảo ngược để từ cũ → mới
+}
+
+const statisticsRevenueLast7Days = async () => {
+  const now = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 6); // tính cả hôm nay là 7 ngày
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listday = await SalesInvoice.aggregate([
+    {
+      $match: {
+        STATUS: "PAYMENTED",
+        SELL_DATE: { $gte: sevenDaysAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$SELL_DATE" } },
+        purchase_method_name: "$PURCHASE_METHOD",
+        total: "$TOTAL_AMOUNT"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          date: "$date",
+          purchase_method_name: "$purchase_method_name"
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: "$_id.date",
+        purchase_methods: {
+          $push: {
+            purchase_method_name: "$_id.purchase_method_name",
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        date: "$_id",
+        purchase_methods: 1,
+        total: 1,
+        quantity: 1
+      }
+    },
+    { $sort: { date: 1 } }
+  ]);
+
+  // Tổng cộng tất cả 7 ngày
+  const total = listday.reduce((sum, item) => sum + item.total, 0);
+  const quantity = listday.reduce((sum, item) => sum + item.quantity, 0);
+
+  return {
+    listday,
+    total,
+    quantity
+  };
+};
+
+
+
+const statisticsRevenueLast4Weeks = async (dayInMonth = null) => {
+
+  // Nếu dayInMonth không được cung cấp, sử dụng ngày hiện tại
+  let now = new Date();
+  let fourWeeksAgo = new Date();
+  if(dayInMonth !== null) {
+    const inputDate = new Date(dayInMonth);
+    console.log(inputDate);
+    // Ngày bắt đầu tháng
+    fourWeeksAgo = new Date(inputDate.getFullYear(), inputDate.getMonth(), 1);
+    fourWeeksAgo.setHours(0, 0, 0, 0);
+
+    // Ngày kết thúc tháng
+    now = new Date(inputDate.getFullYear(), inputDate.getMonth() + 1, 0);
+    now.setHours(23, 59, 59, 999);
+    console.log(fourWeeksAgo, now);
+  }else{
+    now = new Date();
+    fourWeeksAgo = new Date();
+  }
+
+  fourWeeksAgo.setDate(now.getDate() - 28);
+  fourWeeksAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listweek = await SalesInvoice.aggregate([
+    {
+      $match: {
+        STATUS: "PAYMENTED",
+        SELL_DATE: { $gte: fourWeeksAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        week: { $isoWeek: "$SELL_DATE" },
+        year: { $isoWeekYear: "$SELL_DATE" },
+        total: "$TOTAL_AMOUNT",
+        purchase_method_name: "$PURCHASE_METHOD"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          week: "$week",
+          year: "$year",
+          purchase_method_name: "$purchase_method_name"
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          week: "$_id.week",
+          year: "$_id.year"
+        },
+        purchase_methods: {
+          $push: {
+            purchase_method_name: "$_id.purchase_method_name",
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        week: {
+          $concat: [
+            "Tuần ",
+            { $toString: "$_id.week" },
+            " - ",
+            { $toString: "$_id.year" }
+          ]
+        },
+        purchase_methods: 1,
+        total: 1,
+        quantity: 1
+      }
+    },
+    {
+      $sort: { week: 1 }
+    }
+  ]);
+
+  // ✅ Tổng kết
+  const total = listweek.reduce((sum, w) => sum + w.total, 0);
+  const quantity = listweek.reduce((sum, w) => sum + w.quantity, 0);
+
+  return {
+    listweek,
+    total,
+    quantity
+  };
+};
+
+
+const statisticsRevenueLast4Months = async () => {
+  const now = new Date();
+  const fourMonthsAgo = new Date();
+  fourMonthsAgo.setMonth(now.getMonth() - 4);
+  fourMonthsAgo.setDate(1);
+  fourMonthsAgo.setHours(0, 0, 0, 0);
+  now.setHours(23, 59, 59, 999);
+
+  const listmonth = await SalesInvoice.aggregate([
+    {
+      $match: {
+        STATUS: "PAYMENTED",
+        SELL_DATE: { $gte: fourMonthsAgo, $lte: now }
+      }
+    },
+    {
+      $project: {
+        month: { $month: "$SELL_DATE" },
+        year: { $year: "$SELL_DATE" },
+        total: "$TOTAL_AMOUNT",
+        purchase_method_name: "$PURCHASE_METHOD"
+      }
+    },
+    {
+      $group: {
+        _id: {
+          month: "$month",
+          year: "$year",
+          purchase_method_name: "$purchase_method_name"
+        },
+        total_amount: { $sum: "$total" },
+        quantity: { $sum: 1 }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          month: "$_id.month",
+          year: "$_id.year"
+        },
+        purchase_methods: {
+          $push: {
+            purchase_method_name: "$_id.purchase_method_name",
+            total_amount: "$total_amount",
+            quantity: "$quantity"
+          }
+        },
+        total: { $sum: "$total_amount" },
+        quantity: { $sum: "$quantity" }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        month: {
+          $concat: [
+            "Tháng ",
+            { $cond: [{ $lt: ["$_id.month", 10] }, { $concat: ["0", { $toString: "$_id.month" }] }, { $toString: "$_id.month" }] },
+            " - ",
+            { $toString: "$_id.year" }
+          ]
+        },
+        purchase_methods: 1,
+        total: 1,
+        quantity: 1
+      }
+    },
+    {
+      $sort: { month: 1 }
+    }
+  ]);
+
+  // Tính tổng tất cả 4 tháng
+  const total = listmonth.reduce((sum, m) => sum + m.total, 0);
+  const quantity = listmonth.reduce((sum, m) => sum + m.quantity, 0);
+
+  return {
+    listmonth,
+    total,
+    quantity
+  };
+};
+
+const statisticsSalesItem = async(query) => {
+    const {fromDate, toDate} = query
+    const matchConditions = {
+        STATUS: "PAYMENTED",
+    }
+
+    if (fromDate && fromDate.trim()) {
+        if (toDate && toDate.trim()) {
+            matchConditions.SELL_DATE = {
+                $gte: new Date((new Date(fromDate)).setHours(0,0,0,0)),
+                $lte: new Date((new Date(toDate)).setHours(23,59,59,999))      
+            }
+        }
+
+        else {
+            matchConditions.SELL_DATE = {
+                $gte: new Date((new Date(fromDate)).setHours(0,0,0,0))
+            }
+        }
+    }
+
+    else {
+        if (toDate && toDate.trim()) {
+            matchConditions.SELL_DATE = {
+                $lte: new Date((new Date(toDate)).setHours(23,59,59,999)) 
+            }
+        }
+    }
+
+    // pipeline.push({
+    //     $match: matchConditions
+    // })
+    // pipline.push
+    console.log(matchConditions)
+    const pipeline = [
+        {
+            $match: matchConditions
+        },
+        {
+            $unwind: {
+                path: "$ITEMS",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                item: "$ITEMS"
+            }
+        },
+        {
+            $group: {
+                _id: "$item.ITEM_CODE",
+                quantity: { $sum: "$item.QUANTITY" },
+                total_amount: { $sum: "$item.TOTAL_PRICE" }
+            }
+        },
+        
+    ]
+
+    console.log(pipeline)
+    const listItem = await SalesInvoice.aggregate([
+        {
+            $match: matchConditions
+        },
+        {
+            $unwind: {
+                path: "$ITEMS",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                item: "$ITEMS"
+            }
+        },
+        {
+            $group: {
+                _id: "$item.ITEM_CODE",
+                quantity: { $sum: "$item.QUANTITY" },
+                total_amount: { $sum: "$item.TOTAL_PRICE" }
+            }
+        },
+        {
+            $lookup: {
+                from: 'items',
+                localField: '_id',
+                foreignField: 'ITEM_CODE',
+                as: 'item'
+            }
+        },
+        {
+            $unwind: {
+                path: '$item',
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            $project: {
+                ITEM_CODE: '$item.ITEM_CODE',
+                ITEM_NAME: '$item.ITEM_NAME',
+                AVATAR_IMAGE_URL: '$item.AVATAR_IMAGE_URL',
+                quantity: 1,
+                total_amount: 1,
+                _id: 0
+            }
+        }
+    ]);
+
+    // Tính tổng tất cả 4 tháng
+    const total = listItem.reduce((sum, m) => sum + m.total_amount, 0);
+    const quantity = listItem.reduce((sum, m) => sum + m.quantity, 0);
+    console.log(listItem)
+    return {
+        listItem,
+        total,
+        quantity
+    };
+}
+
+
+const cancelOrder = async (invoiceCode, user) => {
+    try {
+        const invoice = await SalesInvoice.findOne({INVOICE_CODE: invoiceCode})
+
+        if (!invoice || invoice.CREATED_BY_USER.toString() !== user.USER_ID) {
+            return {error: `Không tìm thấy hóa đơn ${invoiceCode} hoặc không có quyền truy cập.`}
+        }
+
+        if (invoice.STATUS !== 'DRAFT') {
+            return {error: `Không thể hủy đơn hàng có trạng thái ${invoice.STATUS}.`}
+        }
+
+        const response = await rollbackDataForCancellingOrder(invoice)
+        if (response?.error) {
+            return response
+        }
+
+        invoice.STATUS = 'CANCELLED'
+        invoice.UPDATED_AT = new Date()
+
+        await invoice.save()
+        return await handleInvoiceDataForResponse(invoice)
+    } catch(error) {
+        console.log(error)
+        throw new Error('Lỗi xảy ra khi hủy đơn hàng.')
+    }
+}
+
 module.exports = {
     getAllInvoices,
     getInvoiceByCode,
     createInvoice,
     updateInvoice,
     deleteItems,
-    deleteInvoice
+    deleteInvoice,
+    statisticInvoiceBasedOnStatus,
+    cancelOrder,
+    statisticInvoiceBasedOnStatus,
+    statisticsRevenueLast7Days,
+    statisticsRevenueLast4Weeks,
+    statisticsRevenueLast4Months,
+    statisticsSalesItem
 }

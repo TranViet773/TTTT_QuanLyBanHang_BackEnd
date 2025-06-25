@@ -3,7 +3,7 @@ const Account = require("../models/Account.model");
 const AccountDevice = require("../models/AccountDevice.model");
 const authService = require("../services/auth.service");
 const authHelper = require("../helpers/auth.helper");
-const { isValidInfo } = require("../helpers/auth.helper");
+const { isValidInfo, isValidEmail } = require("../helpers/auth.helper");
 const { ObjectId } = require("mongodb");
 const { generateKeyPairSync } = require("crypto");
 const ms = require("ms");
@@ -114,10 +114,10 @@ const handleUserDataForResponse = (user, account, device) => {
 };
 
 const handleRegistration = async (data) => {
-  const existingUser =
-    (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) ||
-    (await Account.findOne({ USERNAME: data.username }));
-  if (existingUser) return { error: "Email đã được đăng ký!" };
+  if (await User.findOne({ "LIST_EMAIL.EMAIL": data.email })) 
+    return { error: "Email đã được đăng ký!" };
+  if (await Account.findOne({ USERNAME: data.username }))
+    return {error: "Username đã được đăng ký. Vui lòng chọn username khác!"}
   await authService.sendVerificationEmail(data);
 };
 
