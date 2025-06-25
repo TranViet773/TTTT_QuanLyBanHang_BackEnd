@@ -116,7 +116,7 @@ const createVoucher = async (data) => {
   const now = new Date();
   if (VALUE <= 0) {
     return {
-      error: "Giá trị voucher phải lớn hơn 0",
+      error: "Giá trị voucher phải lớn hơn 0", 
     };
   }
   if (QUANTITY <= 0) {
