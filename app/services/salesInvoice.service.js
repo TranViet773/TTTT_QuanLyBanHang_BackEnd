@@ -1315,9 +1315,9 @@ const updateInvoice = async (data) => {
         return ({error: "Không tìm thấy hóa đơn."})
     }
 
-    if (invoice.STATUS !== 'DRAFT') {
-        return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
-    }
+    // if (invoice.STATUS !== 'DRAFT') {
+    //     return {error: `Không thể cập nhật chi tiết hóa đơn đang có trạng thái ${invoice.STATUS}.`}
+    // }
 
     if (status === 'CANCELLED') {
         if (invoice.STATUS !== 'DRAFT') {
@@ -1346,83 +1346,85 @@ const updateInvoice = async (data) => {
 
     try {
  
-        // cập nhật danh sách item nếu có
-        if (items && items.length > 0) {
-            const itemCodes = items.map(item => item.ITEM_CODE)
-            const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
+        if (invoice.STATUS === 'DRAFT') {
+            // cập nhật danh sách item nếu có
+            if (items && items.length > 0) {
+                const itemCodes = items.map(item => item.ITEM_CODE)
+                const originalItems = await Item.find({ ITEM_CODE: { $in: itemCodes } })
 
-            const updatingItems = await updateInvoiceItems(items, originalItems)
-            if (updatingItems?.error) {
-                return { error: updatingItems.error }
-            }
+                const updatingItems = await updateInvoiceItems(items, originalItems)
+                if (updatingItems?.error) {
+                    return { error: updatingItems.error }
+                }
 
-            for (const newItems of items) {
-                let oldItemFlag = false
-                for (let i=0; i < invoice.ITEMS.length; i++) {
-                    if (newItems.ITEM_CODE === invoice.ITEMS[i].ITEM_CODE) {
-                        invoice.ITEMS[i] = newItems
-                        oldItemFlag = true
-                        break
+                for (const newItems of items) {
+                    let oldItemFlag = false
+                    for (let i=0; i < invoice.ITEMS.length; i++) {
+                        if (newItems.ITEM_CODE === invoice.ITEMS[i].ITEM_CODE) {
+                            invoice.ITEMS[i] = newItems
+                            oldItemFlag = true
+                            break
+                        }
+                    }
+
+                    if (!oldItemFlag) {
+                        invoice.ITEMS.push(newItems)
                     }
                 }
+            }
 
-                if (!oldItemFlag) {
-                    invoice.ITEMS.push(newItems)
+            // cập nhật voucher (nếu có) và kiểm tra khả dụng
+            const voucher = globalVoucher ? await Voucher.findById(globalVoucher) :
+                                            invoice.VOUCHER_GLOBAL_ID ? await Voucher.findById(invoice.VOUCHER_GLOBAL_ID) : null
+            const isAvailable = voucher ? voucherService.isVoucherAvailable(voucher).available : null
+            const isValidVoucher = checkValidVouchers(invoice.ITEMS)
+            
+            if (isValidVoucher || (voucher && isAvailable === false)){
+                if (isAvailable === false) {
+                    invoice.VOUCHER_GLOBAL_ID = null
                 }
             }
-        }
 
-        // cập nhật voucher (nếu có) và kiểm tra khả dụng
-        const voucher = globalVoucher ? await Voucher.findById(globalVoucher) :
-                                        invoice.VOUCHER_GLOBAL_ID ? await Voucher.findById(invoice.VOUCHER_GLOBAL_ID) : null
-        const isAvailable = voucher ? voucherService.isVoucherAvailable(voucher).available : null
-        const isValidVoucher = checkValidVouchers(invoice.ITEMS)
-        
-        if (isValidVoucher || (voucher && isAvailable === false)){
-            if (isAvailable === false) {
-                invoice.VOUCHER_GLOBAL_ID = null
+
+            // tính lại tổng tiền
+            let totalAmount = 0
+            for (const item of invoice.ITEMS) {
+                totalAmount += item.TOTAL_PRICE
             }
-        }
-
-
-        // tính lại tổng tiền
-        let totalAmount = 0
-        for (const item of invoice.ITEMS) {
-            totalAmount += item.TOTAL_PRICE
-        }
-        
-        // cập nhật thuế (nếu có) và tính lại giá trị thuế
-        invoice.TAX = tax ? tax : invoice.TAX ? invoice.TAX : null
-        const taxValue = invoice.TAX ? totalAmount * invoice.TAX/100 : 0
             
-        // cập nhật tổng tiền với giá trị giảm giá (nếu có)
-        if (isAvailable === true) {
-            const discount = voucher.TYPE === 'PERCENTAGE' ? (totalAmount * voucher.VALUE / 100) : voucher.VALUE
-            totalAmount = discount > voucher.MAX_DISCOUNT ? totalAmount - voucher.MAX_DISCOUNT :
-                                                                    totalAmount - discount
+            // cập nhật thuế (nếu có) và tính lại giá trị thuế
+            invoice.TAX = tax ? tax : invoice.TAX ? invoice.TAX : null
+            const taxValue = invoice.TAX ? totalAmount * invoice.TAX/100 : 0
+                
+            // cập nhật tổng tiền với giá trị giảm giá (nếu có)
+            if (isAvailable === true) {
+                const discount = voucher.TYPE === 'PERCENTAGE' ? (totalAmount * voucher.VALUE / 100) : voucher.VALUE
+                totalAmount = discount > voucher.MAX_DISCOUNT ? totalAmount - voucher.MAX_DISCOUNT :
+                                                                        totalAmount - discount
+            }
+
+            // cập nhật extra fee (nếu có)
+            invoice.EXTRA_FEE = extraFee ? extraFee : invoice.EXTRA_FEE ? invoice.EXTRA_FEE : null
+            invoice.EXTRA_FEE_UNIT = extraFeeUnit ? extraFeeUnit : invoice.EXTRA_FEE_UNIT ? invoice.EXTRA_FEE_UNIT : null
+            invoice.EXTRA_FEE_NOTE = extraFeeNote ? extraFeeNote : invoice.EXTRA_FEE_NOTE ? invoice.EXTRA_FEE_NOTE : null
+
+            // cập nhật tổng tiền cho hóa đơn
+            invoice.TOTAL_AMOUNT = totalAmount
+            invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
+
+            // cập nhật lại ghi chú cho hóa đơn (nếu có)
+            invoice.NOTE = note? note : invoice.NOTE ? invoice.NOTE : null
+
+            // cập nhật lại phương thức thanh toán (nếu có)
+            invoice.PAYMENT_METHOD = paymentMethod ? paymentMethod : invoice.PAYMENT_METHOD
+
+            // cập nhật lại phương thức mua hàng (nếu có)
+            invoice.PURCHASE_METHOD = purchaseMethod ? purchaseMethod : invoice.PURCHASE_METHOD
+
+            invoice.UPDATED_AT = now
+
+            await invoice.save()
         }
-
-        // cập nhật extra fee (nếu có)
-        invoice.EXTRA_FEE = extraFee ? extraFee : invoice.EXTRA_FEE ? invoice.EXTRA_FEE : null
-        invoice.EXTRA_FEE_UNIT = extraFeeUnit ? extraFeeUnit : invoice.EXTRA_FEE_UNIT ? invoice.EXTRA_FEE_UNIT : null
-        invoice.EXTRA_FEE_NOTE = extraFeeNote ? extraFeeNote : invoice.EXTRA_FEE_NOTE ? invoice.EXTRA_FEE_NOTE : null
-
-        // cập nhật tổng tiền cho hóa đơn
-        invoice.TOTAL_AMOUNT = totalAmount
-        invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
-
-        // cập nhật lại ghi chú cho hóa đơn (nếu có)
-        invoice.NOTE = note? note : invoice.NOTE ? invoice.NOTE : null
-
-        // cập nhật lại phương thức thanh toán (nếu có)
-        invoice.PAYMENT_METHOD = paymentMethod ? paymentMethod : invoice.PAYMENT_METHOD
-
-        // cập nhật lại phương thức mua hàng (nếu có)
-        invoice.PURCHASE_METHOD = purchaseMethod ? purchaseMethod : invoice.PURCHASE_METHOD
-
-        invoice.UPDATED_AT = now
-
-        await invoice.save()
 
         if (status) {
             return await updateInvoiceStatus(invoice, status)
