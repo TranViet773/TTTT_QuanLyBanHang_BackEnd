@@ -1035,7 +1035,7 @@ const createInvoice = async (data) => {
             totalAmount = totalAmount < 0 ? 0 : totalAmount          
 
             // nếu không phải hóa đơn nháp, cập nhật số lần dùng voucher vào DB
-            if (status !== 'DRAFT') {
+            if (status !== 'DRAFT' || purchaseMethod === 'ONLINE') {
                 try {
                     const {updateVoucher} = await voucherService.updateNumberUsing(voucher)
                     if (updateVoucher?.error) {
