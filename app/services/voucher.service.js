@@ -376,16 +376,18 @@ const updateVoucher = async (voucher, updateData) => {
     if (!voucher) {
       return { error: "Voucher không tồn tại" };
     }
-
-    // Kiểm tra nếu cập nhật số lượng mà nhỏ hơn số lần đã dùng
-    if (
-      updateData.QUANTITY !== undefined &&
-      updateData.QUANTITY < voucher.NUMBER_USING
-    ) {
-      return {
-        error: `Số lượng mới (${updateData.QUANTITY}) phải lớn hơn hoặc bằng số lần đã sử dụng (${voucher.NUMBER_USING})`,
-      };
+    if (updateData.TYPE ==="FIXED_AMOUNT") {
+        updateData.MAX_DISCOUNT = null;
     }
+      if (
+        updateData.QUANTITY !== undefined &&
+        updateData.QUANTITY < voucher.NUMBER_USING
+      ) {
+        // Kiểm tra nếu cập nhật số lượng mà nhỏ hơn số lần đã dùng
+        return {
+          error: `Số lượng mới (${updateData.QUANTITY}) phải lớn hơn hoặc bằng số lần đã sử dụng (${voucher.NUMBER_USING})`,
+        };
+      }
     if (updateData.START_DATE >= updateData.END_DATE) {
       return {
         error: " Ngày bắt đầu phải trước ngày kết thúc",
