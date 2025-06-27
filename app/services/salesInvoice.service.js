@@ -785,6 +785,8 @@ const updateItemForExporting = async (items, originalItems, backupItems, now) =>
                                                     addItem.TOTAL_PRICE - (discount * addItem.QUANTITY) : 
                                                     addItem.TOTAL_PRICE - (voucher.MAX_DISCOUNT * addItem.QUANTITY)
 
+                        // addItem.TOTAL_PRICE = addItem.TOTAL_PRICE < 0 ? 0 : addItem.TOTAL_AMOUNT 
+
                     } catch (error) {
                         backupVouchers.pop()
                         if (vouchers.length > 0) {
@@ -1399,7 +1401,7 @@ const updateInvoice = async (data) => {
             // cập nhật tổng tiền với giá trị giảm giá (nếu có)
             if (isAvailable === true) {
                 const discount = voucher.TYPE === 'PERCENTAGE' ? (totalAmount * voucher.VALUE / 100) : voucher.VALUE
-                totalAmount = discount > voucher.MAX_DISCOUNT ? totalAmount - voucher.MAX_DISCOUNT :
+                totalAmount = voucher.MAX_DISCOUNT && discount > voucher.MAX_DISCOUNT ? totalAmount - voucher.MAX_DISCOUNT :
                                                                         totalAmount - discount
             }
 
@@ -1409,7 +1411,7 @@ const updateInvoice = async (data) => {
             invoice.EXTRA_FEE_NOTE = extraFeeNote ? extraFeeNote : invoice.EXTRA_FEE_NOTE ? invoice.EXTRA_FEE_NOTE : null
 
             // cập nhật tổng tiền cho hóa đơn
-            invoice.TOTAL_AMOUNT = totalAmount
+            invoice.TOTAL_AMOUNT = totalAmount < 0 ? 0 : totalAmount
             invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.EXTRA_FEE ? (invoice.EXTRA_FEE + taxValue + totalAmount) : (taxValue + totalAmount)
 
             // cập nhật lại ghi chú cho hóa đơn (nếu có)
@@ -1499,6 +1501,7 @@ const deleteItems = async (data) => {
                 invoice.TOTAL_AMOUNT = voucher.MAX_DISCOUNT && discount > voucher.MAX_DISCOUNT ? 
                                                         invoice.TOTAL_AMOUNT - voucher.MAX_DISCOUNT : 
                                                         invoice.TOTAL_AMOUNT - discount
+                invoice.TOTAL_AMOUNT = invoice.TOTAL_AMOUNT < 0 ? 0 : invoice.TOTAL_AMOUNT
             }
 
             invoice.TOTAL_WITH_TAX_EXTRA_FEE = invoice.TOTAL_AMOUNT + taxValue + invoice.EXTRA_FEE
