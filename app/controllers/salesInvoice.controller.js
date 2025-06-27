@@ -259,6 +259,23 @@ const statisticsRevenueLast4Months = async (req, res) => {
     }
 }
 
+const statisticsSalesItem = async (req, res) => {
+    try {
+        const response = await salesInvoiceService.statisticsSalesItem(req.query)
+        return res.status(200).json({
+            success: true,
+            message: "Thống kê số lượng sản phẩm bán ra.",
+            data: response,
+        })
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+            data: null
+        })
+    }
+}
+
 const cancelOrder = async (req, res) => {
     try {
         const response = await salesInvoiceService.cancelOrder(req.params.invoiceCode, req.user)
@@ -297,5 +314,6 @@ module.exports = {
     statisticInvoiceBasedOnStatus,
     statisticsRevenueLast7Days,
     statisticsRevenueLast4Weeks,
-    statisticsRevenueLast4Months
+    statisticsRevenueLast4Months,
+    statisticsSalesItem
 }
