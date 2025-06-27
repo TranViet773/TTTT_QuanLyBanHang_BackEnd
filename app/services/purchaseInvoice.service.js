@@ -194,7 +194,7 @@ const handleInvoiceDataForResponse = async (invoice) => {
 const getAllInvoices = async (query) => {
     try {
 
-        const {page, limit, search, userId, status, fromDate, toDate, minPrice, maxPrice} = query
+        const {page, limit, search, status, fromDate, toDate, minPrice, maxPrice} = query
 
         // ép kiểu String thành số
         const pageNumber = Math.max(parseInt(page) || 1, 1);
@@ -242,14 +242,14 @@ const getAllInvoices = async (query) => {
                 endDate.setHours(23,59,59,999)
 
                 matchConditions.push({
-                    SELL_DATE: {
+                    IMPORT_DATE: {
                         $gte: startDate,
                         $lte: endDate
                     } 
                 })
             } else {
                 matchConditions.push({
-                    SELL_DATE: {
+                    IMPORT_DATE: {
                         $gte: startDate
                     }
                 })
@@ -262,7 +262,7 @@ const getAllInvoices = async (query) => {
                 endDate.setHours(23,59,59,999)
 
                 matchConditions.push({
-                    SELL_DATE: {
+                    IMPORT_DATE: {
                         $lte: endDate
                     }
                 })
@@ -297,29 +297,26 @@ const getAllInvoices = async (query) => {
             }
         }
 
-        if (userId?.trim()) {
-            matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
+        // if (userId?.trim()) {
+        //     matchConditions.push({IMPORTED_BY: new ObjectId(userId)})
+        // }
+
+        if (status?.trim()) {
+            matchConditions.push(
+                {
+                    $expr: {
+                        $eq: [
+                            { $arrayElemAt: ["$STATUS.STATUS_NAME", -1] },
+                            status
+                        ]
+                    }
+            }
+            )
         }
 
         if (matchConditions.length > 0) {
             pipeline.push({ $match: { $and: matchConditions } })
             console.log(matchConditions)
-        }
-
-        if (status?.trim()) {
-            pipeline.push({ $match: {
-                $exp: {
-                    $eq: [
-                        {
-                            $getField: "STATUS",
-                            input: {
-                                $arrayElemAt: ["$STATUS", -1]
-                            }
-                        },
-                        status
-                    ]
-                }
-            }})
         }
 
         // tạo pipeline để đếm tổng số bản ghi
@@ -713,7 +710,7 @@ const updateInvoice = async (data) => {
         }
 
         if (statusName && statusName.trim()) {
-            if (statusName !== 'DRAFT') {
+            if (statusName !== 'DRAFT' && statusName !== lastStatus.STATUS_NAME) {
                 lastStatus.THRU_DATE = now
                 // console.log("Last status:", lastStatus)
 
