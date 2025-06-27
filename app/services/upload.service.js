@@ -74,7 +74,7 @@ const handleDeleteFile = (fileUrl) => {
                           .slice(1) // Bỏ "v1748229388"
                           .join('/')
                           .replace(/\.[^/.]+$/, ''); // Xóa đuôi mở rộng; // Lấy public ID từ URL
-  return cloudinary.uploader.destroy(publicId)
+  return cloudinary.uploader.destroy(publicId, { invalidate: true })
     .then(result => {
       if (result.result === 'ok') {
         return {message: 'File deleted successfully'};
